@@ -8,7 +8,7 @@
         body { background-color: #0b0f19; color: #00f0ff; font-family: monospace; text-align: center; padding: 30px; }
         input, button { padding: 12px; margin: 10px; background: #111; color: #00f0ff; border: 2px solid #00f0ff; font-family: monospace; width: 80%; max-width: 400px; }
         button { cursor: pointer; font-weight: bold; width: auto; padding: 12px 25px; }
-        #response { text-align: left; background: #05070c; padding: 15px; border: 1px solid #00f0ff; margin-top: 20px; border-radius: 5px; white-space: pre-wrap; }
+        #response { text-align: left; background: #05070c; padding: 15px; border: 1px solid #00f0ff; margin-top: 20px; border-radius: 5px; white-space: pre-wrap; color: #fff; }
     </style>
 </head>
 <body>
@@ -20,7 +20,7 @@
     <button onclick="sendToJarvis()">Send Request</button>
     
     <h3>Response:</h3>
-    <div id="response" style="max-width: 400px; margin: 0 auto; color: #fff;">Awaiting input...</div>
+    <div id="response" style="max-width: 400px; margin: 0 auto;">Awaiting input...</div>
 
     <script>
         async function sendToJarvis() {
@@ -40,8 +40,8 @@
             resBox.innerText = "Thinking...";
             
             try {
-                // Updated to gemini-3.8-flash as requested by Google API response
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`, {
+                // Using stable gemini-2.0-flash model endpoint
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
