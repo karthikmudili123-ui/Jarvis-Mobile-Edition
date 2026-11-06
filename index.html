@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>J.A.R.V.I.S. - Groq Online v6</title>
+    <title>J.A.R.V.I.S. - Groq Online v7</title>
     <style>
         body { background-color: #0b0f19; color: #00f0ff; font-family: monospace; text-align: center; padding: 30px; }
         input, button { padding: 12px; margin: 10px; background: #111; color: #00f0ff; border: 2px solid #00f0ff; font-family: monospace; width: 80%; max-width: 400px; }
@@ -13,7 +13,7 @@
 </head>
 <body>
     <h1>J.A.R.V.I.S. - Groq Online</h1>
-    <p>Status: <span id="status">Ready (v6.0)</span></p>
+    <p>Status: <span id="status">Ready (v7.0)</span></p>
     
     <input type="password" id="apiKey" placeholder="Enter Groq API Key (gsk_...)"><br>
     <input type="text" id="prompt" placeholder="Ask Jarvis anything..."><br>
@@ -40,7 +40,7 @@
             resBox.innerText = "Thinking...";
             
             try {
-                // Using universally supported llama-3.1-8b-instant model endpoint
+                // Using universally accessible llama-3.1-70b-versatile model endpoint
                 const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                     method: 'POST',
                     headers: { 
@@ -48,7 +48,7 @@
                         'Authorization': `Bearer ${apiKey}`
                     },
                     body: JSON.stringify({
-                        model: "llama-3.1-8b-instant",
+                        model: "llama-3.1-70b-versatile",
                         messages: [{ role: "user", content: prompt }]
                     })
                 });
