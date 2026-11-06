@@ -3,30 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>J.A.R.V.I.S. - Groq Online v7</title>
+    <title>J.A.R.V.I.S. - Groq Online v10</title>
     <style>
-        body { background-color: #0b0f19; color: #00f0ff; font-family: monospace; text-align: center; padding: 30px; }
-        input, button { padding: 12px; margin: 10px; background: #111; color: #00f0ff; border: 2px solid #00f0ff; font-family: monospace; width: 80%; max-width: 400px; }
-        button { cursor: pointer; font-weight: bold; width: auto; padding: 12px 25px; }
-        #response { text-align: left; background: #05070c; padding: 15px; border: 1px solid #00f0ff; margin-top: 20px; border-radius: 5px; white-space: pre-wrap; color: #fff; }
+        body { background-color: #0b0f19; color: #00f0ff; font-family: monospace; text-align: center; padding: 20px; }
+        input, select, button { padding: 10px; margin: 8px; background: #111; color: #00f0ff; border: 2px solid #00f0ff; font-family: monospace; width: 85%; max-width: 400px; }
+        button { cursor: pointer; font-weight: bold; width: auto; padding: 10px 20px; }
+        #chat-container { text-align: left; background: #05070c; padding: 15px; border: 1px solid #00f0ff; margin: 20px auto; border-radius: 5px; max-width: 400px; height: 300px; overflow-y: auto; white-space: pre-wrap; color: #fff; }
+        .user-msg { color: #00f0ff; margin-bottom: 8px; }
+        .jarvis-msg { color: #00ffaa; margin-bottom: 8px; }
     </style>
 </head>
 <body>
     <h1>J.A.R.V.I.S. - Groq Online</h1>
-    <p>Status: <span id="status">Ready (v7.0)</span></p>
+    <p>Status: <span id="status">Loading models...</span></p>
     
-    <input type="password" id="apiKey" placeholder="Enter Groq API Key (gsk_...)"><br>
-    <input type="text" id="prompt" placeholder="Ask Jarvis anything..."><br>
+    <input type="password" id="apiKey" placeholder="Enter Groq API Key (gsk_...)" onchange="fetchModels()"><br>
+    <select id="modelSelect"><option value="">Enter API Key above first</option></select><br>
+    <input type="text" id="prompt" placeholder="Ask Jarvis anything..." onkeypress="if(event.key==='Enter') sendToJarvis()"><br>
     <button onclick="sendToJarvis()">Send Request</button>
+    <button onclick="clearChat()" style="border-color: #ff5555; color: #ff5555;">Clear Chat</button>
     
-    <h3>Response:</h3>
-    <div id="response" style="max-width: 400px; margin: 0 auto;">Awaiting input...</div>
+    <h3>Conversation Log:</h3>
+    <div id="chat-container">Awaiting input...</div>
 
     <script>
+        let chatHistory = [];
+
+        async function fetchModels() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const statusBox = document.getElementById('status');
+            const selectBox = document.getElementById('modelSelect');
+            
+            if(!apiKey) return;
+            
+            statusBox.innerText = "Fetching models...";
+            try {
+                const response = await fetch('https://api.groq.com/openai/v1/models', {
+                    headers: { 'Authorization': `Bearer ${apiKey}` }
+                });
+                const data = await response.json();
+                
+                if(data.data && data.data.length > 0) {
+                    selectBox.innerHTML = '';
+                    // Filter chat models
+                    const chatModels = data.data.filter(m => m.id.includes('llama') || m.id.includes('gemma') || m.id.includes('gpt') || m.id.includes('mixtral'));
+                    const modelsToUse = chatModels.length > 0 ? chatModels : data.data;
+                    
+                    modelsToUse.forEach(m => {
+                        const opt = document.createElement('option');
+                        opt.value = m.id;
+                        opt.innerText = m.id;
+                        selectBox.appendChild(opt);
+                    });
+                    statusBox.innerText = `Ready (v10.0) - ${modelsToUse.length} models`;
+                } else {
+                    statusBox.innerText = "Ready (v10.0) - Default model";
+                    selectBox.innerHTML = '<option value="llama-3.1-8b-instant">llama-3.1-8b-instant</option>';
+                }
+            } catch(e) {
+                statusBox.innerText = "Ready (v10.0) - Connection active";
+                selectBox.innerHTML = '<option value="llama-3.1-8b-instant">llama-3.1-8b-instant</option>';
+            }
+        }
+
         async function sendToJarvis() {
             const apiKey = document.getElementById('apiKey').value.trim();
             const prompt = document.getElementById('prompt').value.trim();
-            const resBox = document.getElementById('response');
+            const model = document.getElementById('modelSelect').value || "llama-3.1-8b-instant";
+            const chatBox = document.getElementById('chat-container');
             
             if(!apiKey) {
                 alert("Please enter your Groq API Key first, Boss!");
@@ -37,10 +81,18 @@
                 return;
             }
             
-            resBox.innerText = "Thinking...";
+            if(chatBox.innerText === "Awaiting input...") chatBox.innerText = "";
+            
+            // Append user message to UI & history
+            chatBox.innerHTML += `<div class="user-msg"><b>You:</b> ${prompt}</div>`;
+            chatHistory.push({ role: "user", content: prompt });
+            document.getElementById('prompt').value = "";
+            chatBox.scrollTop = chatBox.scrollHeight;
+            
+            chatBox.innerHTML += `<div id="thinking" class="jarvis-msg"><b>Jarvis:</b> Thinking...</div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
             
             try {
-                // Using universally accessible llama-3.1-70b-versatile model endpoint
                 const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                     method: 'POST',
                     headers: { 
@@ -48,23 +100,33 @@
                         'Authorization': `Bearer ${apiKey}`
                     },
                     body: JSON.stringify({
-                        model: "llama-3.1-70b-versatile",
-                        messages: [{ role: "user", content: prompt }]
+                        model: model,
+                        messages: chatHistory
                     })
                 });
                 
                 const data = await response.json();
+                document.getElementById('thinking').remove();
                 
                 if(data.choices && data.choices[0]?.message?.content) {
-                    resBox.innerText = data.choices[0].message.content;
+                    const reply = data.choices[0].message.content;
+                    chatBox.innerHTML += `<div class="jarvis-msg"><b>Jarvis:</b> ${reply}</div>`;
+                    chatHistory.push({ role: "assistant", content: reply });
                 } else if(data.error) {
-                    resBox.innerText = "API Error: " + data.error.message;
+                    chatBox.innerHTML += `<div class="jarvis-msg" style="color:#ff5555;"><b>API Error:</b> ${data.error.message}</div>`;
                 } else {
-                    resBox.innerText = "Response: " + JSON.stringify(data, null, 2);
+                    chatBox.innerHTML += `<div class="jarvis-msg"><b>Response:</b> ${JSON.stringify(data)}</div>`;
                 }
             } catch (error) {
-                resBox.innerText = "Network Error: " + error.message;
+                document.getElementById('thinking')?.remove();
+                chatBox.innerHTML += `<div class="jarvis-msg" style="color:#ff5555;"><b>Network Error:</b> ${error.message}</div>`;
             }
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function clearChat() {
+            chatHistory = [];
+            document.getElementById('chat-container').innerText = "Awaiting input...";
         }
     </script>
 </body>
