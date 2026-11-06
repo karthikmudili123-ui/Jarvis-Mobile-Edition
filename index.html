@@ -48,8 +48,15 @@
                 });
                 
                 const data = await response.json();
-                const reply = data.candidates[0].content.parts[0].text;
-                resBox.innerText = reply;
+                
+                if(data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
+                    const reply = data.candidates[0].content.parts[0].text;
+                    resBox.innerText = reply;
+                } else if(data.error) {
+                    resBox.innerText = "API Error: " + data.error.message;
+                } else {
+                    resBox.innerText = "Response: " + JSON.stringify(data);
+                }
             } catch (error) {
                 resBox.innerText = "Error: " + error.message;
             }
