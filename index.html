@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>J.A.R.V.I.S. - Groq Edition</title>
+    <title>J.A.R.V.I.S. - Groq Online</title>
     <style>
         body { background-color: #0b0f19; color: #00f0ff; font-family: monospace; text-align: center; padding: 30px; }
         input, button { padding: 12px; margin: 10px; background: #111; color: #00f0ff; border: 2px solid #00f0ff; font-family: monospace; width: 80%; max-width: 400px; }
@@ -47,7 +47,7 @@
                         'Authorization': `Bearer ${apiKey}`
                     },
                     body: JSON.stringify({
-                        model: "llama3-70b-8192",
+                        model: "llama-3.3-70b-versatile",
                         messages: [{ role: "user", content: prompt }]
                     })
                 });
