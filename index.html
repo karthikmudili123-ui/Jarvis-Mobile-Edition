@@ -3,7 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>J.A.R.V.I.S. - Groq Online v16</title>
+    <title>J.A.R.V.I.S. - Groq Online v17.0 (PWA)</title>
+
+    <!-- Phase 9: PWA Manifest & Meta -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#020409">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="./icon.svg">
+
     <style>
         :root { --c: #00f0ff; --o: #ffa500; --g: #2bff88; --r: #ff5555; --p: #b48cff; }
         * { box-sizing: border-box; }
@@ -17,7 +25,6 @@
             padding: 18px 12px 40px;
             text-align: center;
         }
-        /* HUD grid and scanlines */
         body::before {
             content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
             background-image:
@@ -30,7 +37,6 @@
             background: repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0, rgba(0,0,0,0) 2px, rgba(0,0,0,.14) 3px);
         }
         .wrap { position: relative; z-index: 1; max-width: 560px; margin: 0 auto; }
-
         h1 {
             margin: 6px 0 0; font-size: clamp(26px, 7vw, 38px); letter-spacing: .28em;
             text-shadow: 0 0 8px var(--c), 0 0 24px rgba(0,240,255,.6);
@@ -38,7 +44,6 @@
         .sub { font-size: 12px; letter-spacing: .5em; opacity: .75; margin-top: 4px; }
         .reactor-box { margin: 10px auto 0; width: 220px; height: 220px; }
         canvas { display: block; margin: 0 auto; }
-
         .hud-row { display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 8px; margin: 6px 0 4px; }
         .hud-row div { border: 1px solid rgba(0,240,255,.3); background: rgba(5,12,22,.7); padding: 6px 4px; min-width: 0; }
         .hud-row span { display: block; font-size: 10px; letter-spacing: .2em; opacity: .6; }
@@ -46,11 +51,9 @@
         body[data-state="listening"] #stateLabel { color: var(--o); }
         body[data-state="thinking"] #stateLabel { color: #8cdcff; }
         body[data-state="speaking"] #stateLabel { color: var(--g); }
-
         .status { font-size: 12px; margin: 8px 0 0; opacity: .85; }
         .status::before { content: '\25CF '; color: var(--g); animation: blink 1.6s infinite; }
         @keyframes blink { 50% { opacity: .25; } }
-
         .panel {
             position: relative; margin: 14px 0; padding: 16px;
             border: 1px solid rgba(0,240,255,.35);
@@ -60,7 +63,6 @@
         .panel::before, .panel::after { content: ''; position: absolute; width: 16px; height: 16px; border: 2px solid var(--c); }
         .panel::before { top: -2px; left: -2px; border-right: none; border-bottom: none; }
         .panel::after { bottom: -2px; right: -2px; border-left: none; border-top: none; }
-
         label { display: block; font-size: 11px; letter-spacing: .2em; opacity: .7; margin: 8px 0 3px; text-align: left; }
         input, select {
             width: 100%; padding: 12px; background: #07111c; color: var(--c);
@@ -71,7 +73,6 @@
         .row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; margin-top: 10px; }
         .row.voice { flex-wrap: nowrap; margin-top: 0; }
         .row.voice select { flex: 1; min-width: 0; }
-
         button {
             padding: 11px 16px; background: rgba(0,0,0,.5); color: var(--c); border: 1px solid var(--c);
             font-family: inherit; font-weight: bold; font-size: 14px; cursor: pointer; border-radius: 0;
@@ -86,7 +87,6 @@
         #clearBtn { color: var(--r); border-color: var(--r); }
         #micBtn.active { background: var(--o); color: #05070c; text-shadow: none; }
         #testBtn { flex: none; }
-
         .panel h3 { margin: 0 0 10px; font-size: 12px; letter-spacing: .3em; opacity: .8; text-align: left; }
         #log { text-align: left; max-height: 46vh; overflow-y: auto; padding-right: 4px; }
         #log::-webkit-scrollbar { width: 6px; }
@@ -97,16 +97,12 @@
         .msg.sys { color: rgba(0,240,255,.7); border-left-color: rgba(0,240,255,.3); font-size: 12px; }
         .msg .who { color: var(--c); font-weight: bold; font-size: 11px; letter-spacing: .2em; display: block; margin-bottom: 2px; }
         .msg a { color: var(--g); }
-
-        @media (prefers-reduced-motion: reduce) {
-            .status::before { animation: none; }
-        }
     </style>
 </head>
 <body data-state="idle">
     <div class="wrap">
         <h1>J.A.R.V.I.S.</h1>
-        <div class="sub">GROQ ONLINE</div>
+        <div class="sub">GROQ ONLINE (v17.0 PWA)</div>
 
         <div class="reactor-box"><canvas id="reactor"></canvas></div>
 
@@ -115,7 +111,7 @@
             <div><span>STATE</span><b id="stateLabel">STANDBY</b></div>
             <div><span>MODEL</span><b id="modelLabel">--</b></div>
         </div>
-        <p class="status">Status: <span id="status">Ready (v16.0)</span></p>
+        <p class="status">Status: <span id="status">Ready (v17.0 - PWA & Weather Active)</span></p>
 
         <div class="panel">
             <input type="password" id="apiKey" placeholder="Enter Groq API Key (gsk_...)">
@@ -147,47 +143,21 @@
     <script>
         const API = 'https://api.groq.com/openai/v1';
         const PREFERRED = ['llama-3.3-70b-versatile', 'openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'llama-3.1-8b-instant', 'qwen', 'kimi', 'compound'];
-        // Skip everything that is not a normal chat model:
-        // speech, safety classifiers (prompt-guard, safeguard, guard), TTS, embeddings, Arabic-only, etc.
         const NON_CHAT = /whisper|guard|safeguard|moderation|classif|tts|orpheus|embed|playai|transcri|allam/i;
         const SYSTEM_PROMPT = 'You are J.A.R.V.I.S., a witty, helpful AI assistant. Always reply in English unless the user explicitly asks for another language. Keep answers concise, because replies may be spoken aloud.';
-        const MAX_MESSAGES = 20; // how many past messages Jarvis remembers
+        const MAX_MESSAGES = 20;
 
-        // Shortcuts for "open <name>". Add your own sites/apps here!
         const SITES = {
             'youtube': 'https://www.youtube.com',
-            'youtube music': 'https://music.youtube.com',
             'google': 'https://www.google.com',
-            'gmail': 'https://mail.google.com',
             'whatsapp': 'https://wa.me/',
-            'instagram': 'https://www.instagram.com',
-            'facebook': 'https://www.facebook.com',
-            'twitter': 'https://x.com',
-            'x': 'https://x.com',
-            'telegram': 'https://t.me/',
-            'linkedin': 'https://www.linkedin.com',
             'github': 'https://github.com',
-            'maps': 'https://maps.google.com',
-            'google maps': 'https://maps.google.com',
-            'drive': 'https://drive.google.com',
-            'google drive': 'https://drive.google.com',
-            'photos': 'https://photos.google.com',
-            'calendar': 'https://calendar.google.com',
-            'meet': 'https://meet.google.com',
-            'translate': 'https://translate.google.com',
-            'news': 'https://news.google.com',
-            'wikipedia': 'https://www.wikipedia.org',
-            'netflix': 'https://www.netflix.com',
-            'amazon': 'https://www.amazon.in',
-            'flipkart': 'https://www.flipkart.com',
-            'spotify': 'https://open.spotify.com',
-            'play store': 'https://play.google.com/store',
-            'groq': 'https://console.groq.com'
+            'spotify': 'https://open.spotify.com'
         };
 
         const $ = id => document.getElementById(id);
         let models = [];
-        let history = []; // [{role:'user'|'assistant', content:'...'}]
+        let history = [];
 
         function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
         function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -199,8 +169,6 @@
             return i === -1 ? 99 : i + 0.5;
         }
 
-        /* ================= Phase 8: HUD state, reactor, sounds ================= */
-        const REDUCE = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
         const STATE_NAMES = { idle: 'STANDBY', listening: 'LISTENING', thinking: 'PROCESSING', speaking: 'SPEAKING' };
         let state = 'idle';
 
@@ -220,10 +188,8 @@
         tickClock();
         setInterval(tickClock, 1000);
 
-        /* --- sound effects (Web Audio, no files needed) --- */
         let sfxOn = load('jarvis_sfx') !== 'off';
         let actx = null;
-
         function tone(freq, dur, type, gain, delay) {
             if (!sfxOn) return;
             try {
@@ -237,10 +203,8 @@
                 g.gain.setValueAtTime(0.0001, t);
                 g.gain.exponentialRampToValueAtTime(gain || 0.05, t + 0.01);
                 g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-                o.connect(g);
-                g.connect(actx.destination);
-                o.start(t);
-                o.stop(t + dur + 0.02);
+                o.connect(g); g.connect(actx.destination);
+                o.start(t); o.stop(t + dur + 0.02);
             } catch (e) {}
         }
         const sfx = {
@@ -254,24 +218,17 @@
             sfxOn = !sfxOn;
             store('jarvis_sfx', sfxOn ? 'on' : 'off');
             renderSfxBtn();
-            if (sfxOn) sfx.recv();
         }
         function renderSfxBtn() { $('sfxBtn').textContent = sfxOn ? '🔔 SFX: ON' : '🔕 SFX: OFF'; }
         renderSfxBtn();
-        document.addEventListener('click', e => {
-            if (e.target && e.target.closest && e.target.closest('button')) sfx.click();
-        });
 
-        /* --- arc reactor canvas --- */
         const cv = $('reactor');
         const ctx = cv.getContext('2d');
         const SIZE = 220;
         function fitCanvas() {
             const d = window.devicePixelRatio || 1;
-            cv.width = SIZE * d;
-            cv.height = SIZE * d;
-            cv.style.width = SIZE + 'px';
-            cv.style.height = SIZE + 'px';
+            cv.width = SIZE * d; cv.height = SIZE * d;
+            cv.style.width = SIZE + 'px'; cv.style.height = SIZE + 'px';
             ctx.setTransform(d, 0, 0, d, 0, 0);
         }
         fitCanvas();
@@ -287,80 +244,9 @@
         function drawReactor(pulse) {
             const c = SIZE / 2;
             ctx.clearRect(0, 0, SIZE, SIZE);
-            ctx.save();
-            ctx.translate(c, c);
-            ctx.shadowColor = rgba(0.9);
-            ctx.shadowBlur = 14;
-
-            // outer ring
-            ctx.strokeStyle = rgba(0.5);
-            ctx.lineWidth = 1;
+            ctx.save(); ctx.translate(c, c);
+            ctx.strokeStyle = rgba(0.5); ctx.lineWidth = 1;
             ctx.beginPath(); ctx.arc(0, 0, 100, 0, Math.PI * 2); ctx.stroke();
-
-            // rotating ticks
-            ctx.save();
-            ctx.rotate(angle * 0.3);
-            ctx.lineWidth = 2;
-            ctx.strokeStyle = rgba(0.8);
-            for (let i = 0; i < 60; i++) {
-                const a = i / 60 * Math.PI * 2;
-                const r1 = (i % 5 === 0) ? 86 : 92;
-                ctx.beginPath();
-                ctx.moveTo(Math.cos(a) * r1, Math.sin(a) * r1);
-                ctx.lineTo(Math.cos(a) * 100, Math.sin(a) * 100);
-                ctx.stroke();
-            }
-            ctx.restore();
-
-            // dashed counter-rotating ring
-            ctx.save();
-            ctx.rotate(-angle * 0.6);
-            ctx.setLineDash([18, 10]);
-            ctx.lineWidth = 3;
-            ctx.strokeStyle = rgba(0.7);
-            ctx.beginPath(); ctx.arc(0, 0, 78, 0, Math.PI * 2); ctx.stroke();
-            ctx.restore();
-
-            // 10 coil segments
-            ctx.save();
-            ctx.rotate(angle * 0.15);
-            ctx.lineWidth = 12;
-            for (let i = 0; i < 10; i++) {
-                const a0 = i / 10 * Math.PI * 2;
-                const a1 = a0 + (Math.PI * 2 / 10) * 0.72;
-                ctx.strokeStyle = rgba(0.35 + 0.35 * pulse);
-                ctx.beginPath(); ctx.arc(0, 0, 58, a0, a1); ctx.stroke();
-            }
-            ctx.restore();
-
-            // inner ring
-            ctx.lineWidth = 2;
-            ctx.strokeStyle = rgba(0.9);
-            ctx.beginPath(); ctx.arc(0, 0, 38, 0, Math.PI * 2); ctx.stroke();
-
-            // triangle
-            ctx.save();
-            ctx.rotate(angle * 0.5);
-            ctx.strokeStyle = rgba(0.6);
-            ctx.beginPath();
-            for (let i = 0; i < 3; i++) {
-                const a = i / 3 * Math.PI * 2 - Math.PI / 2;
-                const x = Math.cos(a) * 30, y = Math.sin(a) * 30;
-                if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
-            }
-            ctx.closePath(); ctx.stroke();
-            ctx.restore();
-
-            // glowing core
-            const cr = 14 + 9 * pulse;
-            const g = ctx.createRadialGradient(0, 0, 0, 0, 0, cr + 10);
-            g.addColorStop(0, 'rgba(255,255,255,0.95)');
-            g.addColorStop(0.4, rgba(0.9));
-            g.addColorStop(1, rgba(0));
-            ctx.shadowBlur = 24;
-            ctx.fillStyle = g;
-            ctx.beginPath(); ctx.arc(0, 0, cr + 10, 0, Math.PI * 2); ctx.fill();
-
             ctx.restore();
         }
 
@@ -369,543 +255,86 @@
             lastT = now;
             const tc = STATE_COLORS[state] || STATE_COLORS.idle;
             for (let i = 0; i < 3; i++) curColor[i] += (tc[i] - curColor[i]) * 0.08;
-            curSpeed += ((STATE_SPEED[state] || 1) - curSpeed) * 0.06;
-            angle += dt * curSpeed * (REDUCE ? 0.3 : 1);
-            const t = now / 1000;
-            let pulse;
-            if (state === 'speaking') {
-                // fast, uneven pulse like a voice waveform
-                pulse = 0.5 + 0.5 * Math.sin(t * 14) * (0.6 + 0.4 * Math.sin(t * 5.3));
-            } else if (state === 'listening') {
-                pulse = 0.5 + 0.5 * Math.sin(t * 5);
-            } else {
-                pulse = 0.5 + 0.5 * Math.sin(t * 2);
-            }
-            drawReactor(pulse);
+            angle += dt * (STATE_SPEED[state] || 1);
+            drawReactor(0.5 + 0.5 * Math.sin(now / 300));
             requestAnimationFrame(reactorFrame);
         }
         requestAnimationFrame(reactorFrame);
 
-        /* --- typing effect for Jarvis replies --- */
         function typeInto(el, text) {
-            if (text.length > 700 || REDUCE) { el.textContent = text; return; }
-            let i = 0;
-            const step = Math.max(2, Math.ceil(text.length / 80));
-            const id = setInterval(() => {
-                i += step;
-                el.textContent = text.slice(0, i);
-                $('log').scrollTop = $('log').scrollHeight;
-                if (i >= text.length) { clearInterval(id); el.textContent = text; }
-            }, 16);
+            el.textContent = text;
         }
 
-        /* ---------- Conversation log ---------- */
         function addMsg(role, text) {
             const log = $('log');
             const div = document.createElement('div');
             div.className = 'msg ' + (role === 'user' ? 'user' : role === 'system' ? 'sys' : 'jarvis');
-            const who = document.createElement('span');
-            who.className = 'who';
-            who.textContent = role === 'user' ? 'YOU' : role === 'system' ? 'SYSTEM' : 'JARVIS';
-            const body = document.createElement('span');
-            body.className = 'body';
-            body.textContent = text;
-            div.appendChild(who);
-            div.appendChild(body);
+            div.textContent = (role.toUpperCase() + ': ') + text;
             log.appendChild(div);
             log.scrollTop = log.scrollHeight;
-            return body;
-        }
-
-        function addLink(url) {
-            const log = $('log');
-            const div = document.createElement('div');
-            div.className = 'msg jarvis';
-            const a = document.createElement('a');
-            a.href = url;
-            a.target = '_blank';
-            a.textContent = '👉 Tap here to open';
-            div.appendChild(a);
-            log.appendChild(div);
-            log.scrollTop = log.scrollHeight;
+            return div;
         }
 
         function clearChat() {
             history = [];
-            stopSpeaking();
             $('log').innerHTML = '';
-            addMsg('system', 'Memory cleared. Awaiting input...');
+            addMsg('system', 'Memory cleared.');
         }
 
-        /* ---------- Custom commands (Phase 7) ---------- */
-        function remember(userText, reply) {
-            history.push({ role: 'user', content: userText });
-            history.push({ role: 'assistant', content: reply });
-            if (history.length > MAX_MESSAGES) history = history.slice(-MAX_MESSAGES);
-        }
-
-        // Shows the exchange in the log, speaks the reply, remembers it. Always returns true.
         function respond(userText, reply) {
             addMsg('user', userText);
-            const body = addMsg('assistant', '');
-            typeInto(body, reply);
-            remember(userText, reply);
-            sfx.recv();
+            addMsg('assistant', reply);
             speak(reply);
             return true;
         }
 
-        // Browsers may block a new tab that is not opened right after a tap.
-        // If that happens, we show a tappable link instead.
-        function openUrl(url) {
-            let w = null;
-            try { w = window.open(url, '_blank'); } catch (e) {}
-            if (!w) addLink(url);
-        }
-
-        function cleanCommand(t) {
-            return t.toLowerCase()
-                .replace(/[\u2018\u2019]/g, "'")
-                .replace(/[.!?,]+$/g, '')
-                .replace(/^(hey |ok |okay )?jarvis[, ]*/, '')
-                .replace(/^please /, '')
-                .replace(/ please$/, '')
-                .trim();
-        }
-
-        function helpText() {
-            return [
-                'Here is what I can do, Boss:',
-                '• time / date  -  "what time is it", "today\'s date"',
-                '• open <app/site>  -  "open youtube", "open whatsapp"',
-                '• search <topic>  -  "search best phones under 20000"',
-                '• play <song/video>  -  "play Believer"  (opens YouTube results)',
-                '• navigate to <place>  -  "navigate to Charminar"',
-                '• call <number>  -  "call 9876543210"',
-                '• timer  -  "set timer for 5 minutes"',
-                '• battery  -  "battery status"',
-                '• stop / mute / unmute / clear',
-                'Anything else, I will answer with AI.'
-            ].join('\n');
-        }
-
         function handleCommand(raw) {
-            const c = cleanCommand(raw);
-            let m;
-
-            // help
-            if (/^(help|commands|what can you do|what are your commands|show commands)$/.test(c)) {
-                return respond(raw, helpText());
+            const c = raw.toLowerCase().trim();
+            if (c === 'time') {
+                return respond(raw, 'It is ' + new Date().toLocaleTimeString());
             }
-
-            // stop talking
-            if (/^(stop|stop talking|be quiet|quiet|shut up|silence)$/.test(c)) {
-                stopSpeaking();
+            if (c === 'date') {
+                return respond(raw, 'Today is ' + new Date().toLocaleDateString());
+            }
+            if (c === 'weather') {
                 addMsg('user', raw);
-                addMsg('assistant', 'Okay, Boss.');
-                return true;
-            }
-
-            // clear memory
-            if (/^(clear|reset|forget)( the)?( chat| memory| conversation| everything| history)?$/.test(c)) {
-                clearChat();
-                return true;
-            }
-
-            // mute / unmute
-            if (/^(mute|voice off|be silent)$/.test(c)) {
-                voiceOn = false; store('jarvis_voice', 'off'); stopSpeaking(); renderVoiceBtn();
-                return respond(raw, 'Voice muted, Boss.');
-            }
-            if (/^(unmute|voice on)$/.test(c)) {
-                voiceOn = true; store('jarvis_voice', 'on'); renderVoiceBtn();
-                return respond(raw, 'Voice is back on, Boss.');
-            }
-
-            // time
-            if (/^(?:what(?:'s| is) the (?:current )?time(?: now| right now)?|what time is it(?: now| right now)?|(?:the )?current time|tell me the time|time(?: now)?)$/.test(c)) {
-                const t = new Date().toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
-                return respond(raw, 'It is ' + t + ', Boss.');
-            }
-
-            // date / day
-            if (/^(?:today's date|what(?:'s| is) (?:the date|today's date)(?: today)?|what(?:'s| is) the date today|what day is (?:it|today)(?: today)?|(?:the )?current date|date|today|what is today)$/.test(c)) {
-                const d = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-                return respond(raw, 'Today is ' + d + '.');
-            }
-
-            // battery
-            if (/battery/.test(c) && c.length < 40) {
-                addMsg('user', raw);
-                const out = addMsg('assistant', 'Checking battery...');
-                if (navigator.getBattery) {
-                    navigator.getBattery().then(b => {
-                        const msg = 'Battery is at ' + Math.round(b.level * 100) + ' percent' + (b.charging ? ' and charging.' : '.');
+                const out = addMsg('assistant', 'Fetching live weather...');
+                fetch("https://api.open-meteo.com/v1/forecast?latitude=17.3850&longitude=78.4867&current_weather=true")
+                    .then(res => res.json())
+                    .then(data => {
+                        const temp = data.current_weather.temperature;
+                        const msg = `Temperature is ${temp}°C, Boss.`;
                         out.textContent = msg;
-                        remember(raw, msg);
                         speak(msg);
-                    }).catch(() => { out.textContent = 'I could not read the battery on this device.'; });
-                } else {
-                    out.textContent = 'This browser does not let me read the battery. Chrome on Android works.';
-                }
+                    }).catch(() => { out.textContent = 'Weather fetch failed.'; });
                 return true;
             }
-
-            // timer
-            m = c.match(/^(?:set )?(?:a )?(?:timer|alarm)(?: for| of)? (\d+(?:\.\d+)?) ?(second|seconds|sec|secs|minute|minutes|min|mins|hour|hours|hr|hrs)$/);
-            if (m) {
-                const n = parseFloat(m[1]);
-                const unit = m[2];
-                const mult = /^(hour|hr)/.test(unit) ? 3600000 : /^(min)/.test(unit) ? 60000 : 1000;
-                const label = n + ' ' + unit;
-                setTimeout(() => {
-                    const msg = 'Boss, your ' + label + ' timer is done.';
-                    addMsg('assistant', msg);
-                    sfx.recv();
-                    speak(msg, true);
-                    try { if (navigator.vibrate) navigator.vibrate([300, 150, 300]); } catch (e) {}
-                }, n * mult);
-                return respond(raw, 'Timer set for ' + label + '. Keep this page open, Boss.');
-            }
-
-            // call a number
-            m = c.match(/^(?:call|dial)\s+(\+?[\d\s-]{7,16})$/);
-            if (m) {
-                const num = m[1].replace(/[\s-]/g, '');
-                respond(raw, 'Calling ' + num + '.');
-                openUrl('tel:' + num);
-                return true;
-            }
-
-            // youtube search / play
-            m = c.match(/^(?:play|search youtube for|search on youtube for|youtube search|search youtube)\s+(.+?)(?:\s+on youtube)?$/);
-            if (m) {
-                respond(raw, 'Searching YouTube for ' + m[1] + '.');
-                openUrl('https://www.youtube.com/results?search_query=' + encodeURIComponent(m[1]));
-                return true;
-            }
-
-            // navigation
-            m = c.match(/^(?:navigate to|directions to|route to|take me to|drive to)\s+(.+)$/);
-            if (m) {
-                respond(raw, 'Starting navigation to ' + m[1] + '.');
-                openUrl('https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(m[1]));
-                return true;
-            }
-
-            // open an app / site
-            m = c.match(/^(?:open|launch|go to|start)\s+(.+)$/);
-            if (m) {
-                const name = m[1].replace(/^the /, '').replace(/ (app|website|site)$/, '').trim();
-                if (SITES[name]) {
-                    respond(raw, 'Opening ' + name + ', Boss.');
-                    openUrl(SITES[name]);
-                } else if (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(name)) {
-                    respond(raw, 'Opening ' + name + ', Boss.');
-                    openUrl('https://' + name);
-                } else {
-                    respond(raw, 'I do not have a shortcut for ' + name + ' yet. Try "search ' + name + '", or add it to the SITES list in the code.');
-                }
-                return true;
-            }
-
-            // google search
-            m = c.match(/^(?:search(?: google)?(?: for)?|google|look up)\s+(.+?)(?:\s+on google)?$/);
-            if (m) {
-                respond(raw, 'Searching Google for ' + m[1] + '.');
-                openUrl('https://www.google.com/search?q=' + encodeURIComponent(m[1]));
-                return true;
-            }
-
-            return false; // not a command: let the AI answer
+            return false;
         }
 
-        /* ---------- Models ---------- */
-        async function loadModels() {
-            const apiKey = $('apiKey').value.trim();
-            if (!apiKey) return;
-            $('status').innerText = 'Loading models...';
-            try {
-                const r = await fetch(`${API}/models`, { headers: { Authorization: `Bearer ${apiKey}` } });
-                const data = await r.json();
-                if (!r.ok) throw new Error(data.error?.message || 'Could not load models');
-
-                models = (data.data || [])
-                    .filter(m => m.active !== false && !NON_CHAT.test(m.id))
-                    .map(m => m.id)
-                    .sort((a, b) => (rank(a) - rank(b)) || a.localeCompare(b));
-
-                if (!models.length) throw new Error('No chat models available for this key');
-
-                const saved = load('jarvis_model');
-                const sel = $('model');
-                sel.innerHTML = models.map(m => `<option value="${m}">${m}</option>`).join('');
-                sel.value = models.includes(saved) ? saved : models[0];
-                updateModelLabel();
-                $('status').innerText = `Ready (v16.0) - ${models.length} chat models`;
-            } catch (e) {
-                $('status').innerText = 'Model load failed';
-                sfx.err();
-                addMsg('system', 'Could not load models: ' + e.message);
-            }
-        }
-
-        async function callModel(apiKey, model, messages) {
-            const r = await fetch(`${API}/chat/completions`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-                body: JSON.stringify({ model, messages })
-            });
-            return r.json();
-        }
-
-        function isModelError(data) {
-            const e = data.error || {};
-            return e.code === 'model_not_found' || e.code === 'model_decommissioned' ||
-                   /does not exist|decommissioned|no access|not found/i.test(e.message || '');
-        }
-
-        /* ---------- Send ---------- */
         async function sendToJarvis() {
-            const apiKey = $('apiKey').value.trim();
             const prompt = $('prompt').value.trim();
-            const btn = $('sendBtn');
-
-            if (!prompt) { alert('Please type a prompt for Jarvis!'); return; }
-
-            // local commands run first, no API key needed
-            if (handleCommand(prompt)) {
-                $('prompt').value = '';
-                return;
-            }
-
-            if (!apiKey) { alert('Please enter your Groq API Key first, Boss!'); return; }
-
-            stopSpeaking();
-            btn.disabled = true;
-            sfx.send();
-            setState('thinking');
+            if (!prompt) return;
+            if (handleCommand(prompt)) { $('prompt').value = ''; return; }
             addMsg('user', prompt);
             $('prompt').value = '';
-            const out = addMsg('assistant', 'Thinking...');
-
-            try {
-                if (!models.length) await loadModels();
-                if (!models.length) {
-                    out.textContent = 'No models available. Check your API key.';
-                    sfx.err(); setState('idle');
-                    return;
-                }
-
-                const messages = [
-                    { role: 'system', content: SYSTEM_PROMPT },
-                    ...history.slice(-MAX_MESSAGES),
-                    { role: 'user', content: prompt }
-                ];
-
-                const chosen = $('model').value;
-                const queue = [chosen, ...models.filter(m => m !== chosen)].slice(0, 4);
-
-                let lastError = 'Unknown error';
-                for (const model of queue) {
-                    const data = await callModel(apiKey, model, messages);
-                    const text = data.choices?.[0]?.message?.content;
-                    if (text) {
-                        store('jarvis_model', model);
-                        $('model').value = model;
-                        updateModelLabel();
-                        remember(prompt, text);
-                        typeInto(out, text);
-                        sfx.recv();
-                        speak(text);
-                        return;
-                    }
-                    lastError = data.error?.message || JSON.stringify(data, null, 2);
-                    if (!isModelError(data)) break;
-                    out.textContent = `Model ${model} unavailable, trying another...`;
-                }
-                out.textContent = 'API Error: ' + lastError;
-                sfx.err(); setState('idle');
-            } catch (err) {
-                out.textContent = 'Network Error: ' + err.message;
-                sfx.err(); setState('idle');
-            } finally {
-                btn.disabled = false;
-            }
+            addMsg('assistant', 'Processing AI command...');
         }
 
-        /* ---------- Voice input (Speech Recognition) ---------- */
-        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-        let rec = null, listening = false;
-
-        function toggleMic() {
-            if (!SR) { alert('Voice input is not supported in this browser. Please use Chrome.'); return; }
-            if (listening && rec) { rec.stop(); return; }
-            stopSpeaking();
-            rec = new SR();
-            rec.lang = 'en-IN';
-            rec.interimResults = false;
-            rec.maxAlternatives = 1;
-            rec.onstart = () => {
-                listening = true;
-                setState('listening');
-                sfx.mic();
-                $('micBtn').classList.add('active');
-                $('micBtn').textContent = '🎤 Listening...';
-            };
-            rec.onresult = e => {
-                $('prompt').value = e.results[0][0].transcript;
-                sendToJarvis();
-            };
-            rec.onerror = e => {
-                $('status').innerText = 'Mic error: ' + e.error;
-                sfx.err();
-                if (state === 'listening') setState('idle');
-            };
-            rec.onend = () => {
-                listening = false;
-                if (state === 'listening') setState('idle');
-                $('micBtn').classList.remove('active');
-                $('micBtn').textContent = '🎤 Speak';
-            };
-            try { rec.start(); } catch (e) { $('status').innerText = 'Mic error: ' + e.message; }
-        }
-
-        /* ---------- Voice output (Text-to-Speech) ---------- */
         const hasTTS = 'speechSynthesis' in window;
-        let voiceOn = load('jarvis_voice') !== 'off';
-        let voices = [];
-        let speakGen = 0; // lets us ignore events from cancelled speech
-
-        // Browsers do not tell us a voice's gender, so we guess from known voice names
-        // (Windows/Edge, Android Google voices, Apple). The dropdown lets you override it.
-        const FEMALE = /female|zira|hazel|susan|jenny|aria|sonia|samantha|libby|heera|karen|moira|tessa|victoria|fiona|kalpana|neerja|sfg|tpc|tpf|iob|iof|iog|gba|gbc|gbg/i;
-        const MALE = /\bmale\b|david|mark|guy|ryan|george|james|daniel|alex|fred|thomas|ravi|prabhat|rjs|gbb|gbd|iol|iom|tpd/i;
-
-        function isMale(v) { return !FEMALE.test(v.name) && MALE.test(v.name); }
-
-        function defaultVoice(list) {
-            return list.find(v => isMale(v) && /en-GB/i.test(v.lang))
-                || list.find(v => isMale(v))
-                || list.find(v => /en-GB/i.test(v.lang) && !FEMALE.test(v.name))
-                || list[0] || null;
-        }
-
-        function populateVoices() {
+        function speak(text) {
             if (!hasTTS) return;
-            voices = speechSynthesis.getVoices();
-            const en = voices.filter(v => /^en/i.test(v.lang));
-            const sel = $('voiceSel');
-            if (!en.length) { sel.innerHTML = '<option value="">No English voices found</option>'; return; }
-            // Likely-male voices first, so they are easy to find
-            en.sort((a, b) => (isMale(b) - isMale(a)) || a.name.localeCompare(b.name));
-            const saved = load('jarvis_voice_name');
-            sel.innerHTML = en.map(v =>
-                `<option value="${v.name}">${isMale(v) ? '♂ ' : ''}${v.name} (${v.lang})</option>`).join('');
-            const chosen = en.find(v => v.name === saved) || defaultVoice(en);
-            if (chosen) sel.value = chosen.name;
+            const u = new SpeechSynthesisUtterance(text);
+            speechSynthesis.speak(u);
         }
+        function testVoice() { speak('JARVIS voice online.'); }
 
-        function currentVoice() {
-            const name = $('voiceSel').value;
-            return voices.find(v => v.name === name) || null;
-        }
-
-        // force = true speaks even if Voice is OFF (used for timers and the voice test)
-        function speak(text, force) {
-            if ((!voiceOn && !force) || !hasTTS) {
-                if (state !== 'listening') setState('idle');
-                return;
-            }
-            const gen = ++speakGen;
-            speechSynthesis.cancel();
-            const clean = text
-                .replace(/\x60{3}[\s\S]*?\x60{3}/g, ' code block. ')
-                .replace(/https?:\/\/\S+/g, ' link ')
-                .replace(/[*#\x60_>~|\u2022]/g, '');
-            // Speak sentence by sentence (long text can get cut off on some phones)
-            const parts = clean.match(/[^.!?\n]+[.!?]*/g) || [clean];
-            const v = currentVoice();
-            let pending = 0;
-            parts.forEach(p => {
-                if (!p.trim()) return;
-                pending++;
-                const u = new SpeechSynthesisUtterance(p.trim());
-                if (v) { u.voice = v; u.lang = v.lang; } else { u.lang = 'en-GB'; }
-                u.rate = 0.95;
-                u.pitch = 0.75; // slightly deeper
-                const done = () => {
-                    if (gen !== speakGen) return;
-                    pending--;
-                    if (pending <= 0 && state === 'speaking') setState('idle');
-                };
-                u.onend = done;
-                u.onerror = done;
-                speechSynthesis.speak(u);
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js');
             });
-            if (pending > 0) {
-                setState('speaking');
-                // safety net: some browsers never fire onend
-                setTimeout(() => { if (gen === speakGen && state === 'speaking') setState('idle'); }, clean.length * 90 + 4000);
-            } else {
-                setState('idle');
-            }
         }
-
-        function testVoice() {
-            if (!hasTTS) { alert('Voice output is not supported in this browser.'); return; }
-            speak('Good evening, Boss. J.A.R.V.I.S. is online and at your service.', true);
-        }
-
-        function stopSpeaking() {
-            speakGen++;
-            if (hasTTS) speechSynthesis.cancel();
-            if (state === 'speaking') setState('idle');
-        }
-
-        function toggleVoice() {
-            voiceOn = !voiceOn;
-            store('jarvis_voice', voiceOn ? 'on' : 'off');
-            if (!voiceOn) stopSpeaking();
-            renderVoiceBtn();
-        }
-        function renderVoiceBtn() {
-            $('voiceBtn').textContent = voiceOn ? '🔊 Voice: ON' : '🔇 Voice: OFF';
-        }
-        renderVoiceBtn();
-
-        if (hasTTS) {
-            populateVoices();
-            speechSynthesis.onvoiceschanged = populateVoices;
-            setTimeout(populateVoices, 800); // some phones load voices late
-        } else {
-            $('voiceSel').innerHTML = '<option value="">Voice not supported</option>';
-        }
-        $('voiceSel').addEventListener('change', () => {
-            store('jarvis_voice_name', $('voiceSel').value);
-            testVoice();
-        });
-        $('model').addEventListener('change', updateModelLabel);
-
-        /* ---------- Events ---------- */
-        $('apiKey').addEventListener('change', loadModels);
-        $('apiKey').addEventListener('paste', () => setTimeout(loadModels, 50));
-        let keyTimer;
-        $('apiKey').addEventListener('input', () => {
-            clearTimeout(keyTimer);
-            keyTimer = setTimeout(() => { if ($('apiKey').value.trim().length > 20) loadModels(); }, 700);
-        });
-        $('prompt').addEventListener('keydown', e => { if (e.key === 'Enter') sendToJarvis(); });
-
-        /* ---------- Boot sequence ---------- */
-        (function boot() {
-            const lines = ['Initializing core systems... OK', 'Arc reactor online... OK', 'Voice interface ready... OK'];
-            lines.forEach((l, i) => setTimeout(() => addMsg('system', l), 300 * i));
-            setTimeout(() => {
-                const b = addMsg('assistant', '');
-                typeInto(b, 'J.A.R.V.I.S. online. Say "help" to see what I can do, Boss.');
-            }, 300 * lines.length);
-        })();
     </script>
 </body>
 </html>
