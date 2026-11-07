@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>J.A.R.V.I.S. - Groq Online v14</title>
+    <title>J.A.R.V.I.S. - Groq Online v14.1</title>
     <style>
         body { background-color: #0b0f19; color: #00f0ff; font-family: monospace; text-align: center; padding: 30px 15px; }
         input, button, select { padding: 12px; margin: 6px; background: #111; color: #00f0ff; border: 2px solid #00f0ff; font-family: monospace; width: 90%; max-width: 480px; box-sizing: border-box; }
@@ -25,7 +25,7 @@
 </head>
 <body>
     <h1>J.A.R.V.I.S. - Groq Online</h1>
-    <p>Status: <span id="status">Ready (v14.0)</span></p>
+    <p>Status: <span id="status">Ready (v14.1)</span></p>
 
     <input type="password" id="apiKey" placeholder="Enter Groq API Key (gsk_...)"><br>
     <label for="model">AI Model</label><br>
@@ -109,3 +109,221 @@
                     .filter(m => m.active !== false && !NON_CHAT.test(m.id))
                     .map(m => m.id)
                     .sort((a, b) => (rank(a) - rank(b)) || a.localeCompare(b));
+
+                if (!models.length) throw new Error('No chat models available for this key');
+
+                const saved = load('jarvis_model');
+                const sel = $('model');
+                sel.innerHTML = models.map(m => `<option value="${m}">${m}</option>`).join('');
+                sel.value = models.includes(saved) ? saved : models[0];
+                $('status').innerText = `Ready (v14.1) - ${models.length} chat models`;
+            } catch (e) {
+                $('status').innerText = 'Model load failed';
+                addMsg('assistant', 'Could not load models: ' + e.message);
+            }
+        }
+
+        async function callModel(apiKey, model, messages) {
+            const r = await fetch(`${API}/chat/completions`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+                body: JSON.stringify({ model, messages })
+            });
+            return r.json();
+        }
+
+        function isModelError(data) {
+            const e = data.error || {};
+            return e.code === 'model_not_found' || e.code === 'model_decommissioned' ||
+                   /does not exist|decommissioned|no access|not found/i.test(e.message || '');
+        }
+
+        /* ---------- Send ---------- */
+        async function sendToJarvis() {
+            const apiKey = $('apiKey').value.trim();
+            const prompt = $('prompt').value.trim();
+            const btn = $('sendBtn');
+
+            if (!apiKey) { alert('Please enter your Groq API Key first, Boss!'); return; }
+            if (!prompt) { alert('Please type a prompt for Jarvis!'); return; }
+
+            stopSpeaking();
+            btn.disabled = true;
+            addMsg('user', prompt);
+            $('prompt').value = '';
+            const out = addMsg('assistant', 'Thinking...');
+
+            try {
+                if (!models.length) await loadModels();
+                if (!models.length) { out.textContent = 'No models available. Check your API key.'; return; }
+
+                const messages = [
+                    { role: 'system', content: SYSTEM_PROMPT },
+                    ...history.slice(-MAX_MESSAGES),
+                    { role: 'user', content: prompt }
+                ];
+
+                const chosen = $('model').value;
+                const queue = [chosen, ...models.filter(m => m !== chosen)].slice(0, 4);
+
+                let lastError = 'Unknown error';
+                for (const model of queue) {
+                    const data = await callModel(apiKey, model, messages);
+                    const text = data.choices?.[0]?.message?.content;
+                    if (text) {
+                        store('jarvis_model', model);
+                        $('model').value = model;
+                        history.push({ role: 'user', content: prompt });
+                        history.push({ role: 'assistant', content: text });
+                        if (history.length > MAX_MESSAGES) history = history.slice(-MAX_MESSAGES);
+                        out.textContent = text;
+                        $('log').scrollTop = $('log').scrollHeight;
+                        speak(text);
+                        return;
+                    }
+                    lastError = data.error?.message || JSON.stringify(data, null, 2);
+                    if (!isModelError(data)) break;
+                    out.textContent = `Model ${model} unavailable, trying another...`;
+                }
+                out.textContent = 'API Error: ' + lastError;
+            } catch (err) {
+                out.textContent = 'Network Error: ' + err.message;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        /* ---------- Voice input (Speech Recognition) ---------- */
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let rec = null, listening = false;
+
+        function toggleMic() {
+            if (!SR) { alert('Voice input is not supported in this browser. Please use Chrome.'); return; }
+            if (listening && rec) { rec.stop(); return; }
+            stopSpeaking();
+            rec = new SR();
+            rec.lang = 'en-IN';
+            rec.interimResults = false;
+            rec.maxAlternatives = 1;
+            rec.onstart = () => {
+                listening = true;
+                $('micBtn').classList.add('active');
+                $('micBtn').textContent = '🎤 Listening...';
+            };
+            rec.onresult = e => {
+                $('prompt').value = e.results[0][0].transcript;
+                sendToJarvis();
+            };
+            rec.onerror = e => { $('status').innerText = 'Mic error: ' + e.error; };
+            rec.onend = () => {
+                listening = false;
+                $('micBtn').classList.remove('active');
+                $('micBtn').textContent = '🎤 Speak';
+            };
+            try { rec.start(); } catch (e) { $('status').innerText = 'Mic error: ' + e.message; }
+        }
+
+        /* ---------- Voice output (Text-to-Speech) ---------- */
+        const hasTTS = 'speechSynthesis' in window;
+        let voiceOn = load('jarvis_voice') !== 'off';
+        let voices = [];
+
+        // Browsers do not tell us a voice's gender, so we guess from known voice names
+        // (Windows/Edge, Android Google voices, Apple). The dropdown lets you override it.
+        const FEMALE = /female|zira|hazel|susan|jenny|aria|sonia|samantha|libby|heera|karen|moira|tessa|victoria|fiona|kalpana|neerja|sfg|tpc|tpf|iob|iof|iog|gba|gbc|gbg/i;
+        const MALE = /\bmale\b|david|mark|guy|ryan|george|james|daniel|alex|fred|thomas|ravi|prabhat|rjs|gbb|gbd|iol|iom|tpd/i;
+
+        function isMale(v) { return !FEMALE.test(v.name) && MALE.test(v.name); }
+
+        function defaultVoice(list) {
+            return list.find(v => isMale(v) && /en-GB/i.test(v.lang))
+                || list.find(v => isMale(v))
+                || list.find(v => /en-GB/i.test(v.lang) && !FEMALE.test(v.name))
+                || list[0] || null;
+        }
+
+        function populateVoices() {
+            if (!hasTTS) return;
+            voices = speechSynthesis.getVoices();
+            const en = voices.filter(v => /^en/i.test(v.lang));
+            const sel = $('voiceSel');
+            if (!en.length) { sel.innerHTML = '<option value="">No English voices found</option>'; return; }
+            // Likely-male voices first, so they are easy to find
+            en.sort((a, b) => (isMale(b) - isMale(a)) || a.name.localeCompare(b.name));
+            const saved = load('jarvis_voice_name');
+            sel.innerHTML = en.map(v =>
+                `<option value="${v.name}">${isMale(v) ? '♂ ' : ''}${v.name} (${v.lang})</option>`).join('');
+            const chosen = en.find(v => v.name === saved) || defaultVoice(en);
+            if (chosen) sel.value = chosen.name;
+        }
+
+        function currentVoice() {
+            const name = $('voiceSel').value;
+            return voices.find(v => v.name === name) || null;
+        }
+
+        function speak(text) {
+            if (!voiceOn || !hasTTS) return;
+            speechSynthesis.cancel();
+            const clean = text
+                .replace(/\x60{3}[\s\S]*?\x60{3}/g, ' code block. ')
+                .replace(/https?:\/\/\S+/g, ' link ')
+                .replace(/[*#\x60_>~|]/g, '');
+            // Speak sentence by sentence (long text can get cut off on some phones)
+            const parts = clean.match(/[^.!?\n]+[.!?]*/g) || [clean];
+            const v = currentVoice();
+            parts.forEach(p => {
+                if (!p.trim()) return;
+                const u = new SpeechSynthesisUtterance(p.trim());
+                if (v) { u.voice = v; u.lang = v.lang; } else { u.lang = 'en-GB'; }
+                u.rate = 0.95;
+                u.pitch = 0.75; // slightly deeper
+                speechSynthesis.speak(u);
+            });
+        }
+
+        function testVoice() {
+            if (!hasTTS) { alert('Voice output is not supported in this browser.'); return; }
+            const was = voiceOn;
+            voiceOn = true;
+            speak('Good evening, Boss. J.A.R.V.I.S. is online and at your service.');
+            voiceOn = was;
+        }
+
+        function stopSpeaking() { if (hasTTS) speechSynthesis.cancel(); }
+
+        function toggleVoice() {
+            voiceOn = !voiceOn;
+            store('jarvis_voice', voiceOn ? 'on' : 'off');
+            if (!voiceOn) stopSpeaking();
+            renderVoiceBtn();
+        }
+        function renderVoiceBtn() {
+            $('voiceBtn').textContent = voiceOn ? '🔊 Voice: ON' : '🔇 Voice: OFF';
+        }
+        renderVoiceBtn();
+
+        if (hasTTS) {
+            populateVoices();
+            speechSynthesis.onvoiceschanged = populateVoices;
+            setTimeout(populateVoices, 800); // some phones load voices late
+        } else {
+            $('voiceSel').innerHTML = '<option value="">Voice not supported</option>';
+        }
+        $('voiceSel').addEventListener('change', () => {
+            store('jarvis_voice_name', $('voiceSel').value);
+            testVoice();
+        });
+
+        /* ---------- Events ---------- */
+        $('apiKey').addEventListener('change', loadModels);
+        $('apiKey').addEventListener('paste', () => setTimeout(loadModels, 50));
+        let keyTimer;
+        $('apiKey').addEventListener('input', () => {
+            clearTimeout(keyTimer);
+            keyTimer = setTimeout(() => { if ($('apiKey').value.trim().length > 20) loadModels(); }, 700);
+        });
+        $('prompt').addEventListener('keydown', e => { if (e.key === 'Enter') sendToJarvis(); });
+    </script>
+</body>
+</html>
