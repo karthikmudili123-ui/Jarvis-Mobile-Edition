@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>J.A.R.V.I.S. - Groq Online v13</title>
+    <title>J.A.R.V.I.S. - Groq Online v14</title>
     <style>
         body { background-color: #0b0f19; color: #00f0ff; font-family: monospace; text-align: center; padding: 20px; }
         input, select, button { padding: 10px; margin: 8px; background: #111; color: #00f0ff; border: 2px solid #00f0ff; font-family: monospace; width: 85%; max-width: 400px; }
@@ -37,6 +37,20 @@
         let recognition;
         let isListening = false;
         let voiceEnabled = true;
+        let selectedVoice = null;
+
+        // Load Voices properly
+        function loadVoices() {
+            if (!('speechSynthesis' in window)) return;
+            const voices = window.speechSynthesis.getVoices();
+            // Try to find a good deep male English voice
+            selectedVoice = voices.find(v => (v.name.includes('Male') || v.name.includes('David') || v.name.includes('George') || v.name.includes('Mark') || v.name.includes('Google UK English Male') || v.name.includes('Oliver')) && v.lang.startsWith('en')) || voices.find(v => v.lang.startsWith('en')) || voices[0];
+        }
+
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.onvoiceschanged = loadVoices;
+            loadVoices();
+        }
 
         // Speech Recognition Setup
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -84,20 +98,16 @@
 
         function speakText(text) {
             if (!voiceEnabled || !('speechSynthesis' in window)) return;
-            window.speechSynthesis.cancel(); // Stop previous speech
+            window.speechSynthesis.cancel();
             
             const cleanText = text.replace(/```[\s\S]*?```/g, " code block provided. ").replace(/[*_#`]/g, '');
             const utterance = new SpeechSynthesisUtterance(cleanText);
             
-            // Find a male or deeper voice if available in browser
-            const voices = window.speechSynthesis.getVoices();
-            const maleVoice = voices.find(v => v.name.includes('Male') || v.name.includes('David') || v.name.includes('George') || v.name.includes('Mark') || v.name.includes('UK English Male'));
-            if (maleVoice) {
-                utterance.voice = maleVoice;
+            if (selectedVoice) {
+                utterance.voice = selectedVoice;
             }
-            
             utterance.rate = 1.0;
-            utterance.pitch = 0.6; // Deep robotic pitch adjustment
+            utterance.pitch = 0.5; // Deeper robotic tone
             window.speechSynthesis.speak(utterance);
         }
 
@@ -117,7 +127,8 @@
                 
                 if(data.data && data.data.length > 0) {
                     selectBox.innerHTML = '';
-                    const chatModels = data.data.filter(m => m.id.includes('llama') || m.id.includes('gemma') || m.id.includes('gpt') || m.id.includes('mixtral'));
+                    // Exclude guard/embedding models, keep chat models only
+                    const chatModels = data.data.filter(m => !m.id.includes('guard') && !m.id.includes('embed') && (m.id.includes('llama') || m.id.includes('gemma') || m.id.includes('gpt') || m.id.includes('mixtral')));
                     const modelsToUse = chatModels.length > 0 ? chatModels : data.data;
                     
                     modelsToUse.forEach(m => {
@@ -126,13 +137,13 @@
                         opt.innerText = m.id;
                         selectBox.appendChild(opt);
                     });
-                    statusBox.innerText = `Ready (v13.0) - ${modelsToUse.length} models`;
+                    statusBox.innerText = `Ready (v14.0) - ${modelsToUse.length} models`;
                 } else {
-                    statusBox.innerText = "Ready (v13.0)";
+                    statusBox.innerText = "Ready (v14.0)";
                     selectBox.innerHTML = '<option value="llama-3.1-8b-instant">llama-3.1-8b-instant</option>';
                 }
             } catch(e) {
-                statusBox.innerText = "Ready (v13.0)";
+                statusBox.innerText = "Ready (v14.0)";
                 selectBox.innerHTML = '<option value="llama-3.1-8b-instant">llama-3.1-8b-instant</option>';
             }
         }
@@ -156,7 +167,7 @@
             
             chatBox.innerHTML += `<div class="user-msg"><b>You:</b> ${prompt}</div>`;
             chatHistory.push({ role: "user", content: prompt });
-            document.getElementById('prompt').value = "";
+            document.getElementById('prompt'].value = "";
             chatBox.scrollTop = chatBox.scrollHeight;
             
             chatBox.innerHTML += `<div id="thinking" class="jarvis-msg"><b>JARVIS:</b> Thinking...</div>`;
