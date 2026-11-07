@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>J.A.R.V.I.S. - Groq Online v14.1</title>
+    <title>J.A.R.V.I.S. - Groq Online v15</title>
     <style>
         body { background-color: #0b0f19; color: #00f0ff; font-family: monospace; text-align: center; padding: 30px 15px; }
         input, button, select { padding: 12px; margin: 6px; background: #111; color: #00f0ff; border: 2px solid #00f0ff; font-family: monospace; width: 90%; max-width: 480px; box-sizing: border-box; }
@@ -19,13 +19,14 @@
         .msg.user { color: #7fdcff; }
         .msg.jarvis { color: #fff; }
         .msg .who { color: #00f0ff; font-weight: bold; display: block; margin-bottom: 2px; }
+        .msg a { color: #2bff88; }
         .row { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; }
         label { font-size: 13px; opacity: 0.8; }
     </style>
 </head>
 <body>
     <h1>J.A.R.V.I.S. - Groq Online</h1>
-    <p>Status: <span id="status">Ready (v14.1)</span></p>
+    <p>Status: <span id="status">Ready (v15.0)</span></p>
 
     <input type="password" id="apiKey" placeholder="Enter Groq API Key (gsk_...)"><br>
     <label for="model">AI Model</label><br>
@@ -35,7 +36,7 @@
         <select id="voiceSel" style="width:70%"><option value="">Loading voices...</option></select>
         <button id="testBtn" onclick="testVoice()">🔈 Test</button>
     </div>
-    <input type="text" id="prompt" placeholder="Ask Jarvis anything..."><br>
+    <input type="text" id="prompt" placeholder="Ask Jarvis anything... (say 'help' for commands)"><br>
 
     <div class="row">
         <button id="sendBtn" onclick="sendToJarvis()">Send</button>
@@ -45,7 +46,7 @@
     </div>
 
     <h3>Conversation:</h3>
-    <div id="log"><div class="msg jarvis"><span class="who">JARVIS</span>Awaiting input...</div></div>
+    <div id="log"><div class="msg jarvis"><span class="who">JARVIS</span>Awaiting input... Say "help" to see what I can do.</div></div>
 
     <script>
         const API = 'https://api.groq.com/openai/v1';
@@ -55,6 +56,38 @@
         const NON_CHAT = /whisper|guard|safeguard|moderation|classif|tts|orpheus|embed|playai|transcri|allam/i;
         const SYSTEM_PROMPT = 'You are J.A.R.V.I.S., a witty, helpful AI assistant. Always reply in English unless the user explicitly asks for another language. Keep answers concise, because replies may be spoken aloud.';
         const MAX_MESSAGES = 20; // how many past messages Jarvis remembers
+
+        // ===== Phase 7: shortcuts for "open <name>". Add your own sites/apps here! =====
+        const SITES = {
+            'youtube': 'https://www.youtube.com',
+            'youtube music': 'https://music.youtube.com',
+            'google': 'https://www.google.com',
+            'gmail': 'https://mail.google.com',
+            'whatsapp': 'https://wa.me/',
+            'instagram': 'https://www.instagram.com',
+            'facebook': 'https://www.facebook.com',
+            'twitter': 'https://x.com',
+            'x': 'https://x.com',
+            'telegram': 'https://t.me/',
+            'linkedin': 'https://www.linkedin.com',
+            'github': 'https://github.com',
+            'maps': 'https://maps.google.com',
+            'google maps': 'https://maps.google.com',
+            'drive': 'https://drive.google.com',
+            'google drive': 'https://drive.google.com',
+            'photos': 'https://photos.google.com',
+            'calendar': 'https://calendar.google.com',
+            'meet': 'https://meet.google.com',
+            'translate': 'https://translate.google.com',
+            'news': 'https://news.google.com',
+            'wikipedia': 'https://www.wikipedia.org',
+            'netflix': 'https://www.netflix.com',
+            'amazon': 'https://www.amazon.in',
+            'flipkart': 'https://www.flipkart.com',
+            'spotify': 'https://open.spotify.com',
+            'play store': 'https://play.google.com/store',
+            'groq': 'https://console.groq.com'
+        };
 
         const $ = id => document.getElementById(id);
         let models = [];
@@ -88,11 +121,204 @@
             return body;
         }
 
+        function addLink(url) {
+            const log = $('log');
+            const div = document.createElement('div');
+            div.className = 'msg jarvis';
+            const a = document.createElement('a');
+            a.href = url;
+            a.target = '_blank';
+            a.textContent = '👉 Tap here to open';
+            div.appendChild(a);
+            log.appendChild(div);
+            log.scrollTop = log.scrollHeight;
+        }
+
         function clearChat() {
             history = [];
             stopSpeaking();
             $('log').innerHTML = '';
             addMsg('assistant', 'Memory cleared. Awaiting input...');
+        }
+
+        /* ---------- Phase 7: custom commands ---------- */
+        function remember(userText, reply) {
+            history.push({ role: 'user', content: userText });
+            history.push({ role: 'assistant', content: reply });
+            if (history.length > MAX_MESSAGES) history = history.slice(-MAX_MESSAGES);
+        }
+
+        // Shows the exchange in the log, speaks the reply, remembers it. Always returns true.
+        function respond(userText, reply) {
+            addMsg('user', userText);
+            addMsg('assistant', reply);
+            remember(userText, reply);
+            speak(reply);
+            return true;
+        }
+
+        // Browsers may block a new tab that is not opened right after a tap.
+        // If that happens, we show a tappable link instead.
+        function openUrl(url) {
+            let w = null;
+            try { w = window.open(url, '_blank'); } catch (e) {}
+            if (!w) addLink(url);
+        }
+
+        function cleanCommand(t) {
+            return t.toLowerCase()
+                .replace(/[\u2018\u2019]/g, "'")
+                .replace(/[.!?,]+$/g, '')
+                .replace(/^(hey |ok |okay )?jarvis[, ]*/, '')
+                .replace(/^please /, '')
+                .replace(/ please$/, '')
+                .trim();
+        }
+
+        function helpText() {
+            return [
+                'Here is what I can do, Boss:',
+                '• time / date  -  "what time is it", "today\'s date"',
+                '• open <app/site>  -  "open youtube", "open whatsapp"',
+                '• search <topic>  -  "search best phones under 20000"',
+                '• play <song/video>  -  "play Believer"  (opens YouTube results)',
+                '• navigate to <place>  -  "navigate to Charminar"',
+                '• call <number>  -  "call 9876543210"',
+                '• timer  -  "set timer for 5 minutes"',
+                '• battery  -  "battery status"',
+                '• stop / mute / unmute / clear',
+                'Anything else, I will answer with AI.'
+            ].join('\n');
+        }
+
+        function handleCommand(raw) {
+            const c = cleanCommand(raw);
+            let m;
+
+            // help
+            if (/^(help|commands|what can you do|what are your commands|show commands)$/.test(c)) {
+                return respond(raw, helpText());
+            }
+
+            // stop talking
+            if (/^(stop|stop talking|be quiet|quiet|shut up|silence)$/.test(c)) {
+                stopSpeaking();
+                addMsg('user', raw);
+                addMsg('assistant', 'Okay, Boss.');
+                return true;
+            }
+
+            // clear memory
+            if (/^(clear|reset|forget)( the)?( chat| memory| conversation| everything| history)?$/.test(c)) {
+                clearChat();
+                return true;
+            }
+
+            // mute / unmute
+            if (/^(mute|voice off|be silent)$/.test(c)) {
+                voiceOn = false; store('jarvis_voice', 'off'); stopSpeaking(); renderVoiceBtn();
+                return respond(raw, 'Voice muted, Boss.');
+            }
+            if (/^(unmute|voice on)$/.test(c)) {
+                voiceOn = true; store('jarvis_voice', 'on'); renderVoiceBtn();
+                return respond(raw, 'Voice is back on, Boss.');
+            }
+
+            // time
+            if (/^(?:what(?:'s| is) the (?:current )?time(?: now| right now)?|what time is it(?: now| right now)?|(?:the )?current time|tell me the time|time(?: now)?)$/.test(c)) {
+                const t = new Date().toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
+                return respond(raw, 'It is ' + t + ', Boss.');
+            }
+
+            // date / day
+            if (/^(?:today's date|what(?:'s| is) (?:the date|today's date)(?: today)?|what(?:'s| is) the date today|what day is (?:it|today)(?: today)?|(?:the )?current date|date|today|what is today)$/.test(c)) {
+                const d = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+                return respond(raw, 'Today is ' + d + '.');
+            }
+
+            // battery
+            if (/battery/.test(c) && c.length < 40) {
+                addMsg('user', raw);
+                const out = addMsg('assistant', 'Checking battery...');
+                if (navigator.getBattery) {
+                    navigator.getBattery().then(b => {
+                        const msg = 'Battery is at ' + Math.round(b.level * 100) + ' percent' + (b.charging ? ' and charging.' : '.');
+                        out.textContent = msg;
+                        remember(raw, msg);
+                        speak(msg);
+                    }).catch(() => { out.textContent = 'I could not read the battery on this device.'; });
+                } else {
+                    out.textContent = 'This browser does not let me read the battery. Chrome on Android works.';
+                }
+                return true;
+            }
+
+            // timer
+            m = c.match(/^(?:set )?(?:a )?(?:timer|alarm)(?: for| of)? (\d+(?:\.\d+)?) ?(second|seconds|sec|secs|minute|minutes|min|mins|hour|hours|hr|hrs)$/);
+            if (m) {
+                const n = parseFloat(m[1]);
+                const unit = m[2];
+                const mult = /^(hour|hr)/.test(unit) ? 3600000 : /^(min)/.test(unit) ? 60000 : 1000;
+                const label = n + ' ' + unit;
+                setTimeout(() => {
+                    const msg = 'Boss, your ' + label + ' timer is done.';
+                    addMsg('assistant', msg);
+                    speak(msg, true);
+                    try { if (navigator.vibrate) navigator.vibrate([300, 150, 300]); } catch (e) {}
+                }, n * mult);
+                return respond(raw, 'Timer set for ' + label + '. Keep this page open, Boss.');
+            }
+
+            // call a number
+            m = c.match(/^(?:call|dial)\s+(\+?[\d\s-]{7,16})$/);
+            if (m) {
+                const num = m[1].replace(/[\s-]/g, '');
+                respond(raw, 'Calling ' + num + '.');
+                openUrl('tel:' + num);
+                return true;
+            }
+
+            // youtube search / play
+            m = c.match(/^(?:play|search youtube for|search on youtube for|youtube search|search youtube)\s+(.+?)(?:\s+on youtube)?$/);
+            if (m) {
+                respond(raw, 'Searching YouTube for ' + m[1] + '.');
+                openUrl('https://www.youtube.com/results?search_query=' + encodeURIComponent(m[1]));
+                return true;
+            }
+
+            // navigation
+            m = c.match(/^(?:navigate to|directions to|route to|take me to|drive to)\s+(.+)$/);
+            if (m) {
+                respond(raw, 'Starting navigation to ' + m[1] + '.');
+                openUrl('https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(m[1]));
+                return true;
+            }
+
+            // open an app / site
+            m = c.match(/^(?:open|launch|go to|start)\s+(.+)$/);
+            if (m) {
+                const name = m[1].replace(/^the /, '').replace(/ (app|website|site)$/, '').trim();
+                if (SITES[name]) {
+                    respond(raw, 'Opening ' + name + ', Boss.');
+                    openUrl(SITES[name]);
+                } else if (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(name)) {
+                    respond(raw, 'Opening ' + name + ', Boss.');
+                    openUrl('https://' + name);
+                } else {
+                    respond(raw, 'I do not have a shortcut for ' + name + ' yet. Try "search ' + name + '", or add it to the SITES list in the code.');
+                }
+                return true;
+            }
+
+            // google search
+            m = c.match(/^(?:search(?: google)?(?: for)?|google|look up)\s+(.+?)(?:\s+on google)?$/);
+            if (m) {
+                respond(raw, 'Searching Google for ' + m[1] + '.');
+                openUrl('https://www.google.com/search?q=' + encodeURIComponent(m[1]));
+                return true;
+            }
+
+            return false; // not a command: let the AI answer
         }
 
         /* ---------- Models ---------- */
@@ -116,7 +342,7 @@
                 const sel = $('model');
                 sel.innerHTML = models.map(m => `<option value="${m}">${m}</option>`).join('');
                 sel.value = models.includes(saved) ? saved : models[0];
-                $('status').innerText = `Ready (v14.1) - ${models.length} chat models`;
+                $('status').innerText = `Ready (v15.0) - ${models.length} chat models`;
             } catch (e) {
                 $('status').innerText = 'Model load failed';
                 addMsg('assistant', 'Could not load models: ' + e.message);
@@ -144,8 +370,15 @@
             const prompt = $('prompt').value.trim();
             const btn = $('sendBtn');
 
-            if (!apiKey) { alert('Please enter your Groq API Key first, Boss!'); return; }
             if (!prompt) { alert('Please type a prompt for Jarvis!'); return; }
+
+            // Phase 7: local commands run first, no API key needed
+            if (handleCommand(prompt)) {
+                $('prompt').value = '';
+                return;
+            }
+
+            if (!apiKey) { alert('Please enter your Groq API Key first, Boss!'); return; }
 
             stopSpeaking();
             btn.disabled = true;
@@ -173,9 +406,7 @@
                     if (text) {
                         store('jarvis_model', model);
                         $('model').value = model;
-                        history.push({ role: 'user', content: prompt });
-                        history.push({ role: 'assistant', content: text });
-                        if (history.length > MAX_MESSAGES) history = history.slice(-MAX_MESSAGES);
+                        remember(prompt, text);
                         out.textContent = text;
                         $('log').scrollTop = $('log').scrollHeight;
                         speak(text);
@@ -262,13 +493,14 @@
             return voices.find(v => v.name === name) || null;
         }
 
-        function speak(text) {
-            if (!voiceOn || !hasTTS) return;
+        // force = true speaks even if Voice is OFF (used for timers and the voice test)
+        function speak(text, force) {
+            if ((!voiceOn && !force) || !hasTTS) return;
             speechSynthesis.cancel();
             const clean = text
                 .replace(/\x60{3}[\s\S]*?\x60{3}/g, ' code block. ')
                 .replace(/https?:\/\/\S+/g, ' link ')
-                .replace(/[*#\x60_>~|]/g, '');
+                .replace(/[*#\x60_>~|\u2022]/g, '');
             // Speak sentence by sentence (long text can get cut off on some phones)
             const parts = clean.match(/[^.!?\n]+[.!?]*/g) || [clean];
             const v = currentVoice();
@@ -284,10 +516,7 @@
 
         function testVoice() {
             if (!hasTTS) { alert('Voice output is not supported in this browser.'); return; }
-            const was = voiceOn;
-            voiceOn = true;
-            speak('Good evening, Boss. J.A.R.V.I.S. is online and at your service.');
-            voiceOn = was;
+            speak('Good evening, Boss. J.A.R.V.I.S. is online and at your service.', true);
         }
 
         function stopSpeaking() { if (hasTTS) speechSynthesis.cancel(); }
