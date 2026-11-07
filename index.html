@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>J.A.R.V.I.S. - Groq Online v12</title>
+    <title>J.A.R.V.I.S. - Groq Online v13</title>
     <style>
         body { background-color: #0b0f19; color: #00f0ff; font-family: monospace; text-align: center; padding: 20px; }
         input, select, button { padding: 10px; margin: 8px; background: #111; color: #00f0ff; border: 2px solid #00f0ff; font-family: monospace; width: 85%; max-width: 400px; }
@@ -85,11 +85,19 @@
         function speakText(text) {
             if (!voiceEnabled || !('speechSynthesis' in window)) return;
             window.speechSynthesis.cancel(); // Stop previous speech
-            // Clean markdown code blocks for speech clarity
+            
             const cleanText = text.replace(/```[\s\S]*?```/g, " code block provided. ").replace(/[*_#`]/g, '');
             const utterance = new SpeechSynthesisUtterance(cleanText);
+            
+            // Find a male or deeper voice if available in browser
+            const voices = window.speechSynthesis.getVoices();
+            const maleVoice = voices.find(v => v.name.includes('Male') || v.name.includes('David') || v.name.includes('George') || v.name.includes('Mark') || v.name.includes('UK English Male'));
+            if (maleVoice) {
+                utterance.voice = maleVoice;
+            }
+            
             utterance.rate = 1.0;
-            utterance.pitch = 0.9; // Slightly robotic/deeper tone
+            utterance.pitch = 0.6; // Deep robotic pitch adjustment
             window.speechSynthesis.speak(utterance);
         }
 
@@ -118,13 +126,13 @@
                         opt.innerText = m.id;
                         selectBox.appendChild(opt);
                     });
-                    statusBox.innerText = `Ready (v12.0) - ${modelsToUse.length} models`;
+                    statusBox.innerText = `Ready (v13.0) - ${modelsToUse.length} models`;
                 } else {
-                    statusBox.innerText = "Ready (v12.0)";
+                    statusBox.innerText = "Ready (v13.0)";
                     selectBox.innerHTML = '<option value="llama-3.1-8b-instant">llama-3.1-8b-instant</option>';
                 }
             } catch(e) {
-                statusBox.innerText = "Ready (v12.0)";
+                statusBox.innerText = "Ready (v13.0)";
                 selectBox.innerHTML = '<option value="llama-3.1-8b-instant">llama-3.1-8b-instant</option>';
             }
         }
@@ -174,7 +182,7 @@
                     const reply = data.choices[0].message.content;
                     chatBox.innerHTML += `<div class="jarvis-msg"><b>JARVIS:</b> ${reply}</div>`;
                     chatHistory.push({ role: "assistant", content: reply });
-                    speakText(reply); // Jarvis speaks out loud!
+                    speakText(reply);
                 } else if(data.error) {
                     chatBox.innerHTML += `<div class="jarvis-msg" style="color:#ff5555;"><b>API Error:</b> ${data.error.message}</div>`;
                 } else {
