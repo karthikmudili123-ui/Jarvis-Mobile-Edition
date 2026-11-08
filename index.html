@@ -3,79 +3,376 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>J.A.R.V.I.S. v21.0 Ultimate Agent</title>
+    <title>J.A.R.V.I.S. - Personal AI Agent v19.1 (3D HUD & Wake Word)</title>
+
+    <!-- Phase 9: PWA Manifest & Meta -->
     <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#020409">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="./icon.svg">
+
     <style>
-        :root { --c: #00f0ff; --b: #020409; --o: #ffa500; --g: #2bff88; }
-        body { background: var(--b); color: var(--c); font-family: 'Courier New', monospace; margin: 0; padding: 15px; text-align: center; }
-        h1 { font-size: 30px; letter-spacing: .25em; text-shadow: 0 0 10px var(--c); }
-        .sub { font-size: 11px; letter-spacing: .4em; opacity: 0.7; }
-        
-        /* 3D Arc Reactor Canvas */
-        #reactor { width: 200px; height: 200px; margin: 10px auto; filter: drop-shadow(0 0 15px var(--c)); }
-        
-        .hud-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin: 15px 0; border: 1px solid var(--c); padding: 5px; }
-        .panel { border: 1px solid var(--c); padding: 15px; margin: 10px auto; max-width: 600px; background: rgba(5,12,22,.9); text-align: left; }
-        input { width: 100%; padding: 10px; background: #07111c; color: var(--c); border: 1px solid var(--c); }
-        .row { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; justify-content: center; }
-        button { padding: 8px 12px; cursor: pointer; background: transparent; color: var(--c); border: 1px solid var(--c); }
-        button.active { background: var(--c); color: #000; }
-        
-        #log { height: 150px; overflow-y: auto; border: 1px solid #333; padding: 10px; margin-top: 10px; font-size: 13px; text-align: left; }
-        .msg { margin-bottom: 5px; border-left: 2px solid var(--c); padding-left: 5px; }
+        :root { --c: #00f0ff; --o: #ffa500; --g: #2bff88; --r: #ff5555; --p: #b48cff; }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; }
+        body {
+            background: radial-gradient(ellipse at 50% 0%, #0d1b2e 0%, #05080f 60%, #020409 100%);
+            background-attachment: fixed;
+            color: var(--c);
+            font-family: 'Courier New', monospace;
+            min-height: 100vh;
+            padding: 15px 10px 40px;
+            text-align: center;
+        }
+        body::before {
+            content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background-image:
+                linear-gradient(rgba(0,240,255,.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,240,255,.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+        body::after {
+            content: ''; position: fixed; inset: 0; z-index: 5; pointer-events: none;
+            background: repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0, rgba(0,0,0,0) 2px, rgba(0,0,0,.14) 3px);
+        }
+        .wrap { position: relative; z-index: 1; max-width: 580px; margin: 0 auto; }
+        h1 {
+            margin: 4px 0 0; font-size: clamp(24px, 6vw, 36px); letter-spacing: .25em;
+            text-shadow: 0 0 10px var(--c), 0 0 25px rgba(0,240,255,.6);
+        }
+        .sub { font-size: 11px; letter-spacing: .4em; opacity: .75; margin-top: 2px; }
+        .reactor-box { margin: 10px auto; width: 220px; height: 220px; position: relative; cursor: pointer; }
+        canvas { display: block; margin: 0 auto; filter: drop-shadow(0 0 15px var(--c)); }
+        .hud-row { display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 6px; margin: 6px 0 4px; }
+        .hud-row div { border: 1px solid rgba(0,240,255,.3); background: rgba(5,12,22,.8); padding: 5px 3px; min-width: 0; }
+        .hud-row span { display: block; font-size: 9px; letter-spacing: .15em; opacity: .6; }
+        .hud-row b { display: block; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 0 6px currentColor; }
+        body[data-state="listening"] #stateLabel { color: var(--o); }
+        body[data-state="thinking"] #stateLabel { color: #8cdcff; }
+        body[data-state="speaking"] #stateLabel { color: var(--g); }
+        body[data-state="wakeword"] #stateLabel { color: var(--p); animation: pulseWord 0.8s infinite alternate; }
+        @keyframes pulseWord { from { opacity: 0.4; } to { opacity: 1; } }
+        .status { font-size: 11px; margin: 6px 0 0; opacity: .85; }
+        .status::before { content: '\25CF '; color: var(--g); animation: blink 1.6s infinite; }
+        @keyframes blink { 50% { opacity: .25; } }
+        .panel {
+            position: relative; margin: 12px 0; padding: 14px;
+            border: 1px solid rgba(0,240,255,.35);
+            background: rgba(5,12,22,.85);
+            box-shadow: inset 0 0 18px rgba(0,240,255,.1), 0 0 14px rgba(0,240,255,.08);
+            text-align: left;
+        }
+        .panel::before, .panel::after { content: ''; position: absolute; width: 14px; height: 14px; border: 2px solid var(--c); }
+        .panel::before { top: -2px; left: -2px; border-right: none; border-bottom: none; }
+        .panel::after { bottom: -2px; right: -2px; border-left: none; border-top: none; }
+        label { display: block; font-size: 10px; letter-spacing: .2em; opacity: .7; margin: 6px 0 2px; }
+        input, select {
+            width: 100%; padding: 10px; background: #07111c; color: var(--c);
+            border: 1px solid var(--c); font-family: inherit; font-size: 13px; border-radius: 0;
+        }
+        input:focus, select:focus { outline: none; box-shadow: 0 0 10px var(--c); }
+        input::placeholder { color: rgba(0,240,255,.45); }
+        .row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; margin-top: 8px; }
+        .row.voice { flex-wrap: nowrap; margin-top: 0; }
+        .row.voice select { flex: 1; min-width: 0; }
+        button {
+            padding: 10px 14px; background: rgba(0,0,0,.5); color: var(--c); border: 1px solid var(--c);
+            font-family: inherit; font-weight: bold; font-size: 13px; cursor: pointer; border-radius: 0;
+            text-shadow: 0 0 6px currentColor; transition: background .15s, box-shadow .15s;
+        }
+        button:hover { background: rgba(0,240,255,.15); box-shadow: 0 0 12px currentColor; }
+        button:active { transform: scale(.97); }
+        button:disabled { opacity: .5; cursor: wait; }
+        #micBtn { color: var(--o); border-color: var(--o); }
+        #wakeWordBtn { color: var(--p); border-color: var(--p); }
+        #voiceBtn { color: var(--g); border-color: var(--g); }
+        #sfxBtn { color: var(--p); border-color: var(--p); }
+        #clearBtn { color: var(--r); border-color: var(--r); }
+        #micBtn.active { background: var(--o); color: #05070c; text-shadow: none; }
+        #wakeWordBtn.active { background: var(--p); color: #05070c; text-shadow: none; }
+        #testBtn { flex: none; }
+        .panel h3 { margin: 0 0 8px; font-size: 11px; letter-spacing: .3em; opacity: .8; }
+        #log { text-align: left; max-height: 40vh; overflow-y: auto; padding-right: 4px; }
+        #log::-webkit-scrollbar { width: 6px; }
+        #log::-webkit-scrollbar-thumb { background: rgba(0,240,255,.4); }
+        .msg { white-space: pre-wrap; margin: 0 0 10px; padding-left: 8px; line-height: 1.4; border-left: 2px solid var(--c); font-size: 13px; }
+        .msg.user { color: #7fdcff; border-left-color: #7fdcff; }
+        .msg.jarvis { color: #fff; }
+        .msg.sys { color: rgba(0,240,255,.7); border-left-color: rgba(0,240,255,.3); font-size: 11px; }
+        .msg a { color: var(--g); text-decoration: underline; }
+        .quick-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+        .q-badge {
+            background: rgba(0,240,255,.1); border: 1px solid rgba(0,240,255,.3);
+            color: var(--c); font-size: 10px; padding: 4px 8px; cursor: pointer;
+        }
+        .q-badge:hover { background: var(--c); color: #020409; }
     </style>
 </head>
 <body data-state="idle">
-    <h1>J.A.R.V.I.S.</h1>
-    <div class="sub">PERSONAL AGENT v21.0</div>
-    <canvas id="reactor" width="200" height="200"></canvas>
-    
-    <div class="hud-row">
-        <div><span>TIME</span><b id="clock">--:--:--</b></div>
-        <div><span>STATE</span><b id="stateLabel">STANDBY</b></div>
-        <div><span>MODE</span><b>PWA ONLINE</b></div>
-    </div>
+    <div class="wrap">
+        <h1>J.A.R.V.I.S.</h1>
+        <div class="sub">PERSONAL AGENT v19.1 (3D HUD & WAKE WORD)</div>
 
-    <div class="panel">
-        <input type="text" id="prompt" placeholder="Say 'Jarvis' or type command...">
-        <div class="row">
-            <button onclick="sendAI()">Send</button>
-            <button id="micBtn" onclick="toggleMic()">🎤 Speak</button>
-            <button id="wakeBtn" onclick="toggleWakeWord()">⚡ Wake: OFF</button>
+        <div class="reactor-box" onclick="toggleWakeWord()" title="Click to toggle Wake Word">
+            <canvas id="reactor"></canvas>
+        </div>
+
+        <div class="hud-row">
+            <div><span>TIME</span><b id="clock">--:--:--</b></div>
+            <div><span>STATE</span><b id="stateLabel">STANDBY</b></div>
+            <div><span>MODEL</span><b id="modelLabel">--</b></div>
+        </div>
+        <p class="status">Status: <span id="status">Ready (Say 'Jarvis' or click Mic)</span></p>
+
+        <div class="panel">
+            <input type="password" id="apiKey" placeholder="Enter Groq API Key (gsk_...)">
+            <label for="model">AI MODEL</label>
+            <select id="model"><option value="">Models load after entering API key</option></select>
+
+            <label for="voiceSel">JARVIS VOICE (Multilingual)</label>
+            <div class="row voice">
+                <select id="voiceSel"><option value="">Loading voices...</option></select>
+                <button id="testBtn" onclick="testVoice()">🔈 Test</button>
+            </div>
+
+            <label for="prompt">COMMAND (English, Telugu, Hindi, Tamil, Kannada, Malayalam)</label>
+            <input type="text" id="prompt" placeholder="Say 'Jarvis' or type command..." onkeydown="if(event.key==='Enter') sendToJarvis()">
+
+            <div class="quick-actions">
+                <div class="q-badge" onclick="runQuick('time')">⚡ Time</div>
+                <div class="q-badge" onclick="runQuick('weather')">🌤️ Weather</div>
+                <div class="q-badge" onclick="runQuick('open youtube')">▶️ YouTube</div>
+                <div class="q-badge" onclick="runQuick('draft email to boss@example.com regarding Project Update')">✉️ Gmail Draft</div>
+                <div class="q-badge" onclick="runQuick('whatsapp 9876543210 Hello Boss')">💬 WhatsApp</div>
+                <div class="q-badge" onclick="runQuick('set timer for 1 minutes')">⏱️ Timer</div>
+            </div>
+
+            <div class="row" style="margin-top: 12px;">
+                <button id="sendBtn" onclick="sendToJarvis()">Send</button>
+                <button id="micBtn" onclick="toggleMic()">🎤 Speak</button>
+                <button id="wakeWordBtn" onclick="toggleWakeWord()">⚡ Wake Word: OFF</button>
+                <button id="voiceBtn" onclick="toggleVoice()">🔊 Voice: ON</button>
+                <button id="sfxBtn" onclick="toggleSfx()">🔔 SFX: ON</button>
+                <button id="clearBtn" onclick="clearChat()">🗑 Clear</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h3>CONVERSATION LOG</h3>
+            <div id="log"></div>
         </div>
     </div>
-    <div class="panel" id="log"></div>
 
     <script>
-        // 1. Reactor Animation
-        const cv = document.getElementById('reactor');
-        const ctx = cv.getContext('2d');
-        function draw() {
-            ctx.clearRect(0,0,200,200);
-            ctx.beginPath(); ctx.arc(100,100, 80, 0, Math.PI*2);
-            ctx.strokeStyle = '#00f0ff'; ctx.lineWidth = 3; ctx.stroke();
-            requestAnimationFrame(draw);
-        }
-        draw();
-        
-        // 2. Multilingual Support
-        function speak(text) {
-            const u = new SpeechSynthesisUtterance(text);
-            u.lang = 'te-IN'; // Default Telugu/English support
-            speechSynthesis.speak(u);
+        const API = 'https://api.groq.com/openai/v1';
+        const PREFERRED = ['llama-3.3-70b-versatile', 'llama3-8b-8192', 'mixtral-8x7b-32768'];
+        const NON_CHAT = /whisper|guard|safeguard|moderation|classif|tts|orpheus|embed|playai|transcri|allam/i;
+
+        const SYSTEM_PROMPT = `You are J.A.R.V.I.S., Tony Stark's advanced personal AI assistant.
+You understand and converse fluently in English, Telugu (తెలుగు), Hindi (हिंदी), Tamil (தமிழ்), Kannada (ಕನ್ನಡ), and Malayalam (മലയാളം).
+Always address the user respectfully and affectionately as "Boss" or "Nanna".
+Keep answers concise, intelligent, and tailored for spoken voice output.`;
+
+        const MAX_MESSAGES = 25;
+        const $ = id => document.getElementById(id);
+        let models = [];
+        let history = [];
+        let wakeWordActive = false;
+
+        function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+        function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+
+        const STATE_NAMES = { idle: 'STANDBY', listening: 'LISTENING', thinking: 'PROCESSING', speaking: 'SPEAKING', wakeword: 'WAKE-WORD ON' };
+        let state = 'idle';
+
+        function setState(s) {
+            state = s;
+            document.body.dataset.state = s;
+            $('stateLabel').textContent = STATE_NAMES[s] || s.toUpperCase();
         }
 
-        // 3. Command Handler
-        async function sendAI() {
-            const p = document.getElementById('prompt').value;
-            document.getElementById('log').innerHTML += `<div class="msg">YOU: ${p}</div>`;
-            // Add your Groq API logic here
-            speak("Processing, Boss.");
+        function updateModelLabel() {
+            $('modelLabel').textContent = $('model').value || '--';
         }
-        
-        // 4. Wake Word Logic
-        // ... (WakeWord Logic)
-    </script>
-</body>
-</html>
+
+        function tickClock() {
+            $('clock').textContent = new Date().toLocaleTimeString('en-GB');
+        }
+        tickClock();
+        setInterval(tickClock, 1000);
+
+        let sfxOn = load('jarvis_sfx') !== 'off';
+        let actx = null;
+        function tone(freq, dur, type, gain, delay) {
+            if (!sfxOn) return;
+            try {
+                if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+                if (actx.state === 'suspended') actx.resume();
+                const t = actx.currentTime + (delay || 0);
+                const o = actx.createOscillator();
+                const g = actx.createGain();
+                o.type = type || 'sine';
+                o.frequency.setValueAtTime(freq, t);
+                g.gain.setValueAtTime(0.0001, t);
+                g.gain.exponentialRampToValueAtTime(gain || 0.05, t + 0.01);
+                g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+                o.connect(g); g.connect(actx.destination);
+                o.start(t); o.stop(t + dur + 0.02);
+            } catch (e) {}
+        }
+        const sfx = {
+            click() { tone(1000, 0.04, 'square', 0.02); },
+            send() { tone(880, 0.08, 'square', 0.03); tone(1320, 0.08, 'square', 0.03, 0.07); },
+            recv() { tone(660, 0.1, 'sine', 0.05); tone(990, 0.14, 'sine', 0.05, 0.1); },
+            mic() { tone(520, 0.1, 'triangle', 0.06); tone(780, 0.12, 'triangle', 0.06, 0.09); },
+            err() { tone(180, 0.25, 'sawtooth', 0.04); }
+        };
+
+        function toggleSfx() {
+            sfxOn = !sfxOn;
+            store('jarvis_sfx', sfxOn ? 'on' : 'off');
+            renderSfxBtn();
+        }
+        function renderSfxBtn() { $('sfxBtn').textContent = sfxOn ? '🔔 SFX: ON' : '🔕 SFX: OFF'; }
+        renderSfxBtn();
+
+        const cv = $('reactor');
+        const ctx = cv.getContext('2d');
+        const SIZE = 220;
+        function fitCanvas() {
+            const d = window.devicePixelRatio || 1;
+            cv.width = SIZE * d; cv.height = SIZE * d;
+            cv.style.width = SIZE + 'px'; cv.style.height = SIZE + 'px';
+            ctx.setTransform(d, 0, 0, d, 0, 0);
+        }
+        fitCanvas();
+
+        const STATE_COLORS = {
+            idle: [0, 240, 255],
+            listening: [255, 165, 0],
+            thinking: [140, 220, 255],
+            speaking: [43, 255, 136],
+            wakeword: [180, 140, 255]
+        };
+        const STATE_SPEED = { idle: 1, listening: 2.2, thinking: 4.5, speaking: 2.5, wakeword: 1.8 };
+        let curColor = [0, 240, 255], angle = 0, lastT = 0;
+
+        function rgba(a) {
+            return 'rgba(' + Math.round(curColor[0]) + ',' + Math.round(curColor[1]) + ',' + Math.round(curColor[2]) + ',' + a + ')';
+        }
+
+        function drawReactor(pulse) {
+            const c = SIZE / 2;
+            ctx.clearRect(0, 0, SIZE, SIZE);
+            ctx.save(); ctx.translate(c, c);
+            ctx.strokeStyle = rgba(0.5); ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.arc(0, 0, 100, 0, Math.PI * 2); ctx.stroke();
+            ctx.save(); ctx.rotate(angle * 0.4); ctx.lineWidth = 2; ctx.strokeStyle = rgba(0.85);
+            for (let i = 0; i < 40; i++) {
+                const a = i / 40 * Math.PI * 2;
+                const r1 = (i % 5 === 0) ? 84 : 92;
+                ctx.beginPath(); ctx.moveTo(Math.cos(a) * r1, Math.sin(a) * r1);
+                ctx.lineTo(Math.cos(a) * 100, Math.sin(a) * 100); ctx.stroke();
+            }
+            ctx.restore();
+            ctx.save(); ctx.rotate(-angle * 0.7); ctx.setLineDash([14, 8]); ctx.lineWidth = 3; ctx.strokeStyle = rgba(0.75);
+            ctx.beginPath(); ctx.arc(0, 0, 72, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+            ctx.save(); ctx.rotate(angle * 0.25); ctx.lineWidth = 12;
+            for (let i = 0; i < 8; i++) {
+                const a0 = i / 8 * Math.PI * 2;
+                const a1 = a0 + (Math.PI * 2 / 8) * 0.7;
+                ctx.strokeStyle = rgba(0.4 + 0.4 * pulse);
+                ctx.beginPath(); ctx.arc(0, 0, 52, a0, a1); ctx.stroke();
+            }
+            ctx.restore();
+            ctx.save(); ctx.rotate(angle * -0.6); ctx.strokeStyle = rgba(0.95); ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let i = 0; i < 3; i++) {
+                const a = i / 3 * Math.PI * 2 - Math.PI / 2;
+                const x = Math.cos(a) * 28, y = Math.sin(a) * 28;
+                if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+            }
+            ctx.closePath(); ctx.stroke(); ctx.restore();
+            const cr = 14 + 10 * pulse;
+            const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, cr + 18);
+            grad.addColorStop(0, 'rgba(255,255,255,0.98)');
+            grad.addColorStop(0.4, rgba(0.95)); grad.addColorStop(1, rgba(0));
+            ctx.shadowBlur = 28; ctx.fillStyle = grad;
+            ctx.beginPath(); ctx.arc(0, 0, cr + 12, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+        }
+
+        function reactorFrame(now) {
+            const dt = Math.min(0.05, ((now - lastT) / 1000) || 0.016);
+            lastT = now;
+            const tc = STATE_COLORS[state] || STATE_COLORS.idle;
+            for (let i = 0; i < 3; i++) curColor[i] += (tc[i] - curColor[i]) * 0.1;
+            angle += dt * (STATE_SPEED[state] || 1);
+            drawReactor(0.5 + 0.5 * Math.sin(now / 220));
+            requestAnimationFrame(reactorFrame);
+        }
+        requestAnimationFrame(reactorFrame);
+
+        function typeInto(el, text) { el.textContent = text; }
+
+        function addMsg(role, text) {
+            const log = $('log');
+            const div = document.createElement('div');
+            div.className = 'msg ' + (role === 'user' ? 'user' : role === 'system' ? 'sys' : 'jarvis');
+            div.textContent = (role.toUpperCase() + ': ') + text;
+            log.appendChild(div); log.scrollTop = log.scrollHeight;
+            return div;
+        }
+
+        function addLink(url, label) {
+            const log = $('log');
+            const div = document.createElement('div');
+            div.className = 'msg jarvis';
+            const a = document.createElement('a');
+            a.href = url; a.target = '_blank';
+            a.textContent = label || '👉 Click here to open';
+            div.appendChild(a); log.appendChild(div); log.scrollTop = log.scrollHeight;
+        }
+
+        function clearChat() { history = []; $('log').innerHTML = ''; addMsg('system', 'Memory cleared, Boss.'); }
+
+        function respond(userText, reply) {
+            addMsg('user', userText); addMsg('assistant', reply);
+            sfx.recv(); speak(reply); return true;
+        }
+
+        function openUrl(url) {
+            let w = null; try { w = window.open(url, '_blank'); } catch (e) {}
+            if (!w) addLink(url);
+        }
+
+        function handleCommand(raw) {
+            const c = raw.toLowerCase().trim();
+            if (/^(?:time|samayam)$/.test(c)) return respond(raw, 'Boss, current time is ' + new Date().toLocaleTimeString());
+            if (/^(?:date|eraju date)$/.test(c)) return respond(raw, 'Boss, today is ' + new Date().toLocaleDateString());
+            if (/^(?:weather|forecast|vathavaranam)$/.test(c) || c.includes('weather')) {
+                addMsg('user', raw); const out = addMsg('assistant', 'Fetching live weather...');
+                fetch("https://api.open-meteo.com/v1/forecast?latitude=17.3850&longitude=78.4867&current_weather=true")
+                    .then(res => res.json()).then(data => {
+                        const msg = `Boss, temperature is ${data.current_weather.temperature}°C.`;
+                        out.textContent = msg; sfx.recv(); speak(msg);
+                    }).catch(() => { out.textContent = 'Weather fetch failed.'; });
+                return true;
+            }
+            let m = c.match(/^draft email to\s+([^\s]+)\s+regarding\s+(.+)$/);
+            if (m) { openUrl(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(m[1])}&su=${encodeURIComponent(m[2])}`); return respond(raw, 'Drafting email...'); }
+            m = c.match(/^whatsapp\s+([\d\+]+)\s+(.+)$/);
+            if (m) { openUrl(`https://wa.me/${m[1]}?text=${encodeURIComponent(m[2])}`); return respond(raw, 'Sending WhatsApp message...'); }
+            m = c.match(/^(?:play|youtube)\s+(.+)$/);
+            if (m) { openUrl(`https://www.youtube.com/results?search_query=${encodeURIComponent(m[1])}`); return respond(raw, `Playing ${m[1]}...`); }
+            return false;
+        }
+
+        async function sendToJarvis() {
+            const apiKey = $('apiKey').value.trim() || load('groq_api_key');
+            const prompt = $('prompt').value.trim();
+            if (!prompt) return;
+            store('groq_api_key', apiKey); $('prompt').value = '';
+            if (handleCommand(prompt)) return;
+            if (!apiKey) { alert('API Key missing!'); return; }
+            sfx.send(); setState('thinking'); addMsg(
